@@ -1,0 +1,24 @@
+# Visual Studio / .NET geçici ve derleme dosyaları
+.vs/
+**/.vs/
+**/bin/
+**/obj/
+**/out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+
+# NuGet / Paket önbellekleri
+**/packages/
+*.nupkg
+
+# İşletim sistemi dosyaları
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Geçici test / log dosyaları
+*.log
+*.tmp
