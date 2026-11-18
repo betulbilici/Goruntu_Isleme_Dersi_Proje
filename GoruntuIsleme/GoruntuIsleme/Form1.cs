@@ -113,6 +113,16 @@ namespace GoruntuIsleme
                 hafta3Form.Show();
                 this.Hide();
             }
+            else if (haftaNo == 8)
+            {
+                Hafta8Odev1 hafta8Form = new Hafta8Odev1();
+                FormGezintiYardimcisi.FormGecisYap(this, hafta8Form);
+            }
+            else if (haftaNo == 9)
+            {
+                Hafta9Odev1 hafta9Form = new Hafta9Odev1();
+                FormGezintiYardimcisi.FormGecisYap(this, hafta9Form);
+            }
             else
             {
                 MessageBox.Show($"Hafta {haftaNo} ödevi henüz eklenmedi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);

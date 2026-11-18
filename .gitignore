@@ -22,3 +22,8 @@ Desktop.ini
 # Geçici test / log dosyaları
 *.log
 *.tmp
+
+
+*.pdf
+
+*.pdf
