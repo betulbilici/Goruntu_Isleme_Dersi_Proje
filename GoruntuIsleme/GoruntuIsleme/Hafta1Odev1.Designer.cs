@@ -95,7 +95,7 @@
             lnkOdev2.TabIndex = 4;
             lnkOdev2.TabStop = true;
             lnkOdev2.Text = "Ödev 2'ye Git ▶";
-            lnkOdev2.LinkClicked += lnkOdev2_LinkClicked;
+            
             // 
             // pictureBox1
             // 
