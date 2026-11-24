@@ -2,6 +2,8 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using Point = System.Drawing.Point;
+using Size = System.Drawing.Size;
 
 namespace GoruntuIsleme
 {
@@ -22,90 +24,246 @@ namespace GoruntuIsleme
         private double radyanAci = 0.0;
         private double dereceAci = 0.0;
 
+        private ModernHapRozet rozetTuval;
+        private Label lblEksenKart;
+        private Label lblAnaliz;
+
         public Hafta3Odev3()
         {
             InitializeComponent();
-            this.AutoScaleMode = AutoScaleMode.None;
-            this.StartPosition = FormStartPosition.CenterScreen;
-
-            this.FormClosing += Hafta3Odev3_FormClosing;
-
-            // Tasarımdaki boyut ve konumlara dokunmadan sadece olayları bağlıyoruz
-            if (btnResimSec != null) btnResimSec.Click += btnResimSec_Click;
-            if (btnSifirla != null) btnSifirla.Click += btnSifirla_Click;
-            if (btnAynala != null) btnAynala.Click += btnAynala_Click;
-            if (lnkGeri != null) lnkGeri.LinkClicked += lnkGeri_LinkClicked;
-            if (lnkSonraki != null) lnkSonraki.LinkClicked += lnkSonraki_LinkClicked;
-
-            if (picCanvas != null)
-            {
-                picCanvas.MouseDown += PicCanvas_MouseDown;
-                picCanvas.Paint += PicCanvas_Paint;
-            }
+            ModernArayuzuUygula();
         }
 
-        private void Hafta3Odev3_FormClosing(object sender, FormClosingEventArgs e)
+        private void ModernArayuzuUygula()
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // 1. Form Temel Ayarları (1250x750, Standart Kenarlık ve X ile Ana Menüye Dönüş)
+            FormGezintiYardimcisi.FormuHazirla(this);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.Text = "Hafta 3 - Ödev 3: İki Nokta Arasındaki Eksen Etrafında Aynalama";
+
+            // Designer'daki tüm eski kontrolleri gizle
+            foreach (Control ctrl in this.Controls)
             {
-                Form1 anaForm = (Form1)Application.OpenForms["Form1"];
-                if (anaForm != null)
-                {
-                    anaForm.StartPosition = FormStartPosition.Manual;
-                    anaForm.Location = this.Location;
-                    anaForm.Size = this.Size;
-                    anaForm.Show();
-                    anaForm.BringToFront();
-                }
-                else
-                {
-                    Form1 yeniForm = new Form1();
-                    yeniForm.StartPosition = FormStartPosition.Manual;
-                    yeniForm.Location = this.Location;
-                    yeniForm.Size = this.Size;
-                    yeniForm.Show();
-                }
+                ctrl.Visible = false;
             }
+
+            // 2. Üst Gezinti Barı
+            Panel pnlUst = FormGezintiYardimcisi.UstBarOlustur(
+                form: this,
+                baslik: "Hafta 3 - Ödev 3 | İki Nokta (A - B) Arasındaki Eksen Etrafında Aynalama",
+                oncekiYazi: "< Ödev 2",
+                oncekiTikla: () =>
+                {
+                    Form odev2 = Application.OpenForms["Hafta3Odev2"];
+                    if (odev2 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev2);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev2());
+                },
+                sonrakiYazi: "Ödev 4 >",
+                sonrakiTikla: () =>
+                {
+                    Form odev4 = Application.OpenForms["Hafta3Odev4"];
+                    if (odev4 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev4);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev4());
+                }
+            );
+
+            // 3. Sağ Kontrol Paneli
+            Panel pnlSag = FormGezintiYardimcisi.SagKontrolPaneliOlustur(this, 300);
+
+            Label lblKontrolBaslik = new Label
+            {
+                Text = "Eksen & Aynalama Kontrolü",
+                Font = new Font("Segoe UI Semibold", 10.5f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                Location = new Point(18, 16),
+                AutoSize = true
+            };
+            pnlSag.Controls.Add(lblKontrolBaslik);
+
+            // Resim Seç & Sıfırla Butonları
+            ModernHapButon btnModernResimSec = FormGezintiYardimcisi.ModernButonOlustur("📁 Resim Seç", true, 132, 38);
+            btnModernResimSec.Location = new Point(18, 46);
+            btnModernResimSec.Click += btnResimSec_Click;
+            pnlSag.Controls.Add(btnModernResimSec);
+
+            ModernHapButon btnModernSifirla = FormGezintiYardimcisi.ModernButonOlustur("🔄 Sıfırla", false, 122, 38);
+            btnModernSifirla.Location = new Point(158, 46);
+            btnModernSifirla.Click += btnSifirla_Click;
+            pnlSag.Controls.Add(btnModernSifirla);
+
+            // Eksen Çizgisine Göre Aynala Butonu
+            ModernHapButon btnModernAynala = FormGezintiYardimcisi.ModernButonOlustur("⚡ Eksen Çizgisine Göre Aynala", true, 262, 42);
+            btnModernAynala.Location = new Point(18, 94);
+            btnModernAynala.Click += btnAynala_Click;
+            pnlSag.Controls.Add(btnModernAynala);
+
+            // Aynalama Adımları Kartı
+            ModernKartPanel adimKarti = new ModernKartPanel
+            {
+                Location = new Point(18, 148),
+                Size = new Size(262, 126),
+                Padding = new Padding(12)
+            };
+
+            Label lblAdimBaslik = new Label
+            {
+                Text = "Aynalama Adımları",
+                Location = new Point(12, 10),
+                AutoSize = true,
+                Font = new Font("Segoe UI Semibold", 9.3f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuMaviYazi
+            };
+            adimKarti.Controls.Add(lblAdimBaslik);
+
+            Label lblAdimMetin = new Label
+            {
+                Text =
+                    "1. 'Resim Seç' ile görüntüyü yükleyin.\n" +
+                    "2. Tuvalde eksen doğrusu için A ve B noktalarına tıklayın.\n" +
+                    "3. 'Eksen Çizgisine Göre Aynala' butonuna basın.",
+                Location = new Point(12, 34),
+                Size = new Size(238, 82),
+                Font = new Font("Segoe UI", 8.9f),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi
+            };
+            adimKarti.Controls.Add(lblAdimMetin);
+            pnlSag.Controls.Add(adimKarti);
+
+            // Açık Mavi Eksen ve Formül Değerleri Kartı
+            ModernKartPanel eksenBilgiKarti = FormGezintiYardimcisi.AcikMaviBilgiKartiOlustur(
+                konum: new Point(18, 286),
+                boyut: new Size(262, 275),
+                icerikEtiketi: out lblEksenKart
+            );
+            lblEksenKart.Text =
+                "Eksen ve Formül Değerleri:\n\n" +
+                "• A Noktası: Seçilmedi\n" +
+                "• B Noktası: Seçilmedi\n" +
+                "• Eğim (m): —\n" +
+                "• Açı (θ): —\n\n" +
+                "Formül (Backward Mapping):\n" +
+                "Δ = (x₂ - x₀)·sin(θ) - (y₂ - y₀)·cos(θ)\n" +
+                "x₁ = x₂ - 2·Δ·sin(θ)\n" +
+                "y₁ = y₂ + 2·Δ·cos(θ)";
+            pnlSag.Controls.Add(eksenBilgiKarti);
+
+            // 4. Orta Çalışma Alanı (Üst: Çalışma Tuvali | Alt: Analiz Şeridi)
+            Panel pnlOrta = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                BackColor = FormGezintiYardimcisi.TemaZemin
+            };
+
+            TableLayoutPanel anaYerlesim = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+
+            // Tuval Kartı
+            ModernKartPanel tuvalKart = new ModernKartPanel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(6),
+                Padding = new Padding(12)
+            };
+
+            Panel pnlTuvalUst = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.White
+            };
+
+            Label lblTuvalBaslik = new Label
+            {
+                Text = "Çalışma Tuvali (Eksen Doğrusu İçin A ve B Noktalarını İşaretleyin)",
+                UseMnemonic = false,
+                AutoSize = true,
+                Location = new Point(0, 4),
+                Font = new Font("Segoe UI Semibold", 9.8f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi
+            };
+            pnlTuvalUst.Controls.Add(lblTuvalBaslik);
+
+            rozetTuval = new ModernHapRozet();
+            rozetTuval.MetinGuncelle("A & B Bekleniyor");
+            rozetTuval.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            rozetTuval.Location = new Point(pnlTuvalUst.Width - rozetTuval.Width - 2, 1);
+            pnlTuvalUst.Resize += (s, e) =>
+            {
+                rozetTuval.Location = new Point(pnlTuvalUst.Width - rozetTuval.Width - 2, 1);
+            };
+            pnlTuvalUst.Controls.Add(rozetTuval);
+
+            picCanvas.Parent?.Controls.Remove(picCanvas);
+            picCanvas.Visible = true;
+            picCanvas.Dock = DockStyle.Fill;
+            picCanvas.BorderStyle = BorderStyle.None;
+            picCanvas.BackColor = Color.FromArgb(241, 245, 249);
+            picCanvas.Cursor = Cursors.Cross;
+            picCanvas.MouseDown -= PicCanvas_MouseDown;
+            picCanvas.Paint -= PicCanvas_Paint;
+
+            picCanvas.MouseDown += PicCanvas_MouseDown;
+            picCanvas.Paint += PicCanvas_Paint;
+
+            tuvalKart.Controls.Add(picCanvas);
+            tuvalKart.Controls.Add(pnlTuvalUst);
+
+            // Alt Analiz Şeridi
+            ModernKartPanel altSerit = FormGezintiYardimcisi.AltAnalizSeridiOlustur(
+                "Resim seçip tuval üzerinde aynalama eksenini tanımlayan 2 noktaya (A ve B) tıklayınız.",
+                out lblAnaliz,
+                "Eksen Aynalama"
+            );
+
+            anaYerlesim.Controls.Add(tuvalKart, 0, 0);
+            anaYerlesim.Controls.Add(altSerit, 0, 1);
+            pnlOrta.Controls.Add(anaYerlesim);
+
+            this.Controls.Add(pnlOrta);
+            FormGezintiYardimcisi.YerlesimiDuzenle(this, pnlUst, pnlSag, pnlOrta);
         }
 
         // Resim Seçme
         private void btnResimSec_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog ofd = new OpenFileDialog())
+            string dosyaYolu = FormGezintiYardimcisi.ResimDosyasiSec("Eksen Etrafında Aynalama İçin Resim Seçiniz");
+            if (string.IsNullOrEmpty(dosyaYolu)) return;
+
+            orijinalBmp?.Dispose();
+            aynalanmisBmp?.Dispose();
+            aynalanmisBmp = null;
+
+            using (Bitmap temp = new Bitmap(dosyaYolu))
             {
-                ofd.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.png;*.bmp";
-                if (ofd.ShowDialog() == DialogResult.OK)
+                int hedefW = temp.Width;
+                int hedefH = temp.Height;
+                if (hedefW > 350 || hedefH > 350)
                 {
-                    orijinalBmp?.Dispose();
-                    aynalanmisBmp?.Dispose();
-                    aynalanmisBmp = null;
-
-                    using (Bitmap temp = new Bitmap(ofd.FileName))
-                    {
-                        // Aynalama alanı rahat sığsın diye tuval boyutuna göre ölçekleme
-                        int hedefW = temp.Width;
-                        int hedefH = temp.Height;
-                        if (hedefW > 350 || hedefH > 350)
-                        {
-                            double oran = Math.Min(300.0 / hedefW, 300.0 / hedefH);
-                            hedefW = (int)(hedefW * oran);
-                            hedefH = (int)(hedefH * oran);
-                        }
-                        orijinalBmp = new Bitmap(temp, hedefW, hedefH);
-                    }
-
-                    resimKonum = new Point(50, 50);
-                    noktaA = null;
-                    noktaB = null;
-
-                    if (lblBilgi != null)
-                    {
-                        lblBilgi.Text = $"Resim yüklendi ({orijinalBmp.Width}x{orijinalBmp.Height}).\nLütfen tuval üzerinde eksen doğrusu için 1. noktaya (A) tıklayınız.";
-                    }
-
-                    picCanvas.Invalidate();
+                    double oran = Math.Min(300.0 / hedefW, 300.0 / hedefH);
+                    hedefW = (int)(hedefW * oran);
+                    hedefH = (int)(hedefH * oran);
                 }
+                orijinalBmp = new Bitmap(temp, hedefW, hedefH);
             }
+
+            resimKonum = new Point(60, 60);
+            noktaA = null;
+            noktaB = null;
+
+            rozetTuval.MetinGuncelle("A & B Bekleniyor");
+            lblAnaliz.Text = $"Resim yüklendi ({orijinalBmp.Width}×{orijinalBmp.Height} px) • Tuval üzerinde 1. noktaya (A) tıklayınız.";
+            picCanvas.Invalidate();
         }
 
         // Sıfırlama
@@ -116,13 +274,22 @@ namespace GoruntuIsleme
             noktaA = null;
             noktaB = null;
 
-            if (lblBilgi != null)
-                lblBilgi.Text = "Sıfırlandı. Yeni 2 nokta seçebilirsiniz.";
-
+            rozetTuval.MetinGuncelle("A & B Bekleniyor");
+            lblEksenKart.Text =
+                "Eksen ve Formül Değerleri:\n\n" +
+                "• A Noktası: Seçilmedi\n" +
+                "• B Noktası: Seçilmedi\n" +
+                "• Eğim (m): —\n" +
+                "• Açı (θ): —\n\n" +
+                "Formül (Backward Mapping):\n" +
+                "Δ = (x₂ - x₀)·sin(θ) - (y₂ - y₀)·cos(θ)\n" +
+                "x₁ = x₂ - 2·Δ·sin(θ)\n" +
+                "y₁ = y₂ + 2·Δ·cos(θ)";
+            lblAnaliz.Text = "Sıfırlandı • Tuval üzerinden yeni A ve B noktaları seçebilirsiniz.";
             picCanvas.Invalidate();
         }
 
-        // Tuvalde 2 Nokta Seçme (Slayt d)
+        // Tuvalde 2 Nokta Seçme
         private void PicCanvas_MouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left) return;
@@ -132,15 +299,14 @@ namespace GoruntuIsleme
                 noktaA = e.Location;
                 noktaB = null;
 
-                if (lblBilgi != null)
-                    lblBilgi.Text = $"A Noktası seçildi: ({noktaA.Value.X}, {noktaA.Value.Y})\nŞimdi eksenin geçeceği 2. noktaya (B) tıklayınız.";
+                rozetTuval.MetinGuncelle("A Seçildi • B Bekleniyor");
+                lblAnaliz.Text = $"A Noktası seçildi: ({noktaA.Value.X}, {noktaA.Value.Y}) • Şimdi eksenin geçeceği 2. noktaya (B) tıklayınız.";
             }
             else if (!noktaB.HasValue)
             {
                 if (e.Location == noktaA.Value) return;
                 noktaB = e.Location;
 
-                // Slayt d) Doğrunun Eğimi ve Açısı
                 double dx = noktaB.Value.X - noktaA.Value.X;
                 double dy = noktaB.Value.Y - noktaA.Value.Y;
 
@@ -148,15 +314,17 @@ namespace GoruntuIsleme
                 radyanAci = Math.Atan2(dy, dx);
                 dereceAci = radyanAci * 180.0 / Math.PI;
 
-                if (lblBilgi != null)
-                {
-                    lblBilgi.Text = $"Eksen Doğrusu Belirlendi!\n" +
-                                    $"• A Noktası: ({noktaA.Value.X}, {noktaA.Value.Y})\n" +
-                                    $"• B Noktası: ({noktaB.Value.X}, {noktaB.Value.Y})\n" +
-                                    $"• Eğim (m): {(double.IsInfinity(egim_m) ? "Dikey" : egim_m.ToString("F3"))}\n" +
-                                    $"• Açı (θ): {dereceAci:F2}°\n" +
-                                    $"Şimdi 'Eksen Çizgisine Göre Aynala' butonuna basabilirsiniz.";
-                }
+                string egimMetni = double.IsInfinity(egim_m) ? "Dikey (∞)" : egim_m.ToString("F3");
+
+                rozetTuval.MetinGuncelle($"θ = {dereceAci:F1}°");
+                lblEksenKart.Text =
+                    "Eksen ve Formül Değerleri:\n\n" +
+                    $"• A Noktası: ({noktaA.Value.X}, {noktaA.Value.Y})\n" +
+                    $"• B Noktası: ({noktaB.Value.X}, {noktaB.Value.Y})\n" +
+                    $"• Eğim (m): {egimMetni}\n" +
+                    $"• Açı (θ): {dereceAci:F2}°\n\n" +
+                    "Aynalamayı başlatmak için 'Eksen Çizgisine Göre Aynala' butonuna basınız.";
+                lblAnaliz.Text = $"Eksen belirlendi • A({noktaA.Value.X}, {noktaA.Value.Y}) – B({noktaB.Value.X}, {noktaB.Value.Y}) • Eğim m={egimMetni}, θ={dereceAci:F2}°";
             }
             else
             {
@@ -165,31 +333,30 @@ namespace GoruntuIsleme
                 aynalanmisBmp?.Dispose();
                 aynalanmisBmp = null;
 
-                if (lblBilgi != null)
-                    lblBilgi.Text = $"Yeni A Noktası seçildi: ({noktaA.Value.X}, {noktaA.Value.Y})\nB noktasını seçiniz.";
+                rozetTuval.MetinGuncelle("A Seçildi • B Bekleniyor");
+                lblAnaliz.Text = $"Yeni A Noktası seçildi: ({noktaA.Value.X}, {noktaA.Value.Y}) • B noktasını seçiniz.";
             }
 
             picCanvas.Invalidate();
         }
 
-        // Slaytlardaki Formülü Tüm Tuval Boyutunda Kayıpsız Çalıştırma
+        // Backward Mapping ile Tüm Tuval Boyutunda Kayıpsız Aynalama
         private void btnAynala_Click(object sender, EventArgs e)
         {
             if (orijinalBmp == null || !noktaA.HasValue || !noktaB.HasValue)
             {
-                MessageBox.Show("Lütfen bir resim yükleyip eksen için 2 noktaya tıklayınız!", "Uyarı");
+                MessageBox.Show("Lütfen bir resim yükleyip eksen için 2 noktaya (A ve B) tıklayınız!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             this.Cursor = Cursors.WaitCursor;
 
-            int cw = picCanvas.Width;
-            int ch = picCanvas.Height;
+            int cw = picCanvas.ClientSize.Width;
+            int ch = picCanvas.ClientSize.Height;
 
             aynalanmisBmp?.Dispose();
             aynalanmisBmp = new Bitmap(cw, ch);
 
-            // Eksen doğrusu üzerindeki referans nokta (Tuval koordinatında x0, y0)
             double x0 = noktaA.Value.X;
             double y0 = noktaA.Value.Y;
 
@@ -199,11 +366,6 @@ namespace GoruntuIsleme
             int imgW = orijinalBmp.Width;
             int imgH = orijinalBmp.Height;
 
-            // Slayttaki Formül:
-            // Delta = (x1 - x0)*sin(θ) - (y1 - y0)*cos(θ)
-            // x2 = x1 + 2*Delta*(-sin(θ))
-            // y2 = y1 + 2*Delta*(cos(θ))
-            // Tuvalin tamamı taranarak piksel kaybı engellenir (Backward Mapping)
             for (int y2 = 0; y2 < ch; y2++)
             {
                 for (int x2 = 0; x2 < cw; x2++)
@@ -223,35 +385,47 @@ namespace GoruntuIsleme
                 }
             }
 
-            if (lblBilgi != null)
-            {
-                lblBilgi.Text = $"Aynalama Tamamlandı!\n" +
-                                $"Formül: Δ = (x - x0)sinθ - (y - y0)cosθ\n" +
-                                $"Referans: ({x0}, {y0})\n" +
-                                $"Eksen Açısı: {dereceAci:F2}°";
-            }
+            string egimMetni = double.IsInfinity(egim_m) ? "Dikey (∞)" : egim_m.ToString("F3");
+            lblEksenKart.Text =
+                "Aynalama Tamamlandı:\n\n" +
+                $"• Referans (x₀, y₀): ({x0}, {y0})\n" +
+                $"• Eğim (m): {egimMetni}\n" +
+                $"• Eksen Açısı (θ): {dereceAci:F2}°\n\n" +
+                "Uygulanan Formül:\n" +
+                "Δ = (x - x₀)sinθ - (y - y₀)cosθ\n" +
+                "x₁ = x₂ - 2Δsinθ, y₁ = y₂ + 2Δcosθ";
 
+            lblAnaliz.Text = $"Aynalama tamamlandı • Referans: ({x0}, {y0}) • Eksen Açısı θ = {dereceAci:F2}°";
             picCanvas.Invalidate();
             this.Cursor = Cursors.Default;
         }
 
-        // Çizim Metodu (Orijinal Resim, Aynalanmış Resim, Eksen ve A-B Noktaları)
+        // Çizim Metodu (Izgara, Orijinal Resim, Aynalanmış Resim, Eksen ve A-B Noktaları)
         private void PicCanvas_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            // 1. Orijinal Resim (Slayttaki kartal gibi yerinde durur)
+            // Arka plan koordinat ızgarası
+            using (Pen pIzgara = new Pen(Color.FromArgb(226, 232, 240), 1))
+            {
+                for (int x = 0; x < picCanvas.Width; x += 40)
+                    g.DrawLine(pIzgara, x, 0, x, picCanvas.Height);
+                for (int y = 0; y < picCanvas.Height; y += 40)
+                    g.DrawLine(pIzgara, 0, y, picCanvas.Width, y);
+            }
+
+            // 1. Orijinal Resim
             if (orijinalBmp != null)
             {
                 g.DrawImage(orijinalBmp, resimKonum.X, resimKonum.Y, orijinalBmp.Width, orijinalBmp.Height);
-                using (Pen p = new Pen(Color.LightGray, 1))
+                using (Pen p = new Pen(Color.FromArgb(148, 163, 184), 1.5f))
                 {
                     g.DrawRectangle(p, resimKonum.X, resimKonum.Y, orijinalBmp.Width, orijinalBmp.Height);
                 }
             }
 
-            // 2. Aynalanmış Resim (Tuval üstünde eksiksiz görünür)
+            // 2. Aynalanmış Resim
             if (aynalanmisBmp != null)
             {
                 g.DrawImage(aynalanmisBmp, 0, 0);
@@ -269,10 +443,10 @@ namespace GoruntuIsleme
                     float ux = dx / hipo;
                     float uy = dy / hipo;
 
-                    PointF baslangic = new PointF(noktaA.Value.X - (ux * 1000), noktaA.Value.Y - (uy * 1000));
-                    PointF bitis = new PointF(noktaA.Value.X + (ux * 1000), noktaA.Value.Y + (uy * 1000));
+                    PointF baslangic = new PointF(noktaA.Value.X - (ux * 1500), noktaA.Value.Y - (uy * 1500));
+                    PointF bitis = new PointF(noktaA.Value.X + (ux * 1500), noktaA.Value.Y + (uy * 1500));
 
-                    using (Pen pEksen = new Pen(Color.FromArgb(0, 180, 240), 2.5f) { DashStyle = DashStyle.Dash })
+                    using (Pen pEksen = new Pen(Color.FromArgb(14, 165, 233), 2.5f) { DashStyle = DashStyle.Dash })
                     {
                         g.DrawLine(pEksen, baslangic, bitis);
                     }
@@ -283,55 +457,42 @@ namespace GoruntuIsleme
             if (noktaA.HasValue)
             {
                 int k = 10;
-                using (Brush b = new SolidBrush(Color.Red))
+                using (Brush b = new SolidBrush(Color.FromArgb(239, 68, 68)))
                 using (Pen p = new Pen(Color.White, 2))
                 {
                     g.FillRectangle(b, noktaA.Value.X - k / 2, noktaA.Value.Y - k / 2, k, k);
                     g.DrawRectangle(p, noktaA.Value.X - k / 2, noktaA.Value.Y - k / 2, k, k);
                 }
-                g.DrawString("A (x1, y1)", new Font("Segoe UI", 9, FontStyle.Bold), Brushes.Red, noktaA.Value.X + 8, noktaA.Value.Y - 8);
+                using (Font f = new Font("Segoe UI", 9, FontStyle.Bold))
+                using (Brush bYazi = new SolidBrush(Color.FromArgb(220, 38, 38)))
+                {
+                    g.DrawString("A (x₁, y₁)", f, bYazi, noktaA.Value.X + 8, noktaA.Value.Y - 8);
+                }
             }
 
             // 5. B Noktası (Mavi Kare)
             if (noktaB.HasValue)
             {
                 int k = 10;
-                using (Brush b = new SolidBrush(Color.Blue))
+                using (Brush b = new SolidBrush(Color.FromArgb(37, 99, 235)))
                 using (Pen p = new Pen(Color.White, 2))
                 {
                     g.FillRectangle(b, noktaB.Value.X - k / 2, noktaB.Value.Y - k / 2, k, k);
                     g.DrawRectangle(p, noktaB.Value.X - k / 2, noktaB.Value.Y - k / 2, k, k);
                 }
-                g.DrawString("B (x2, y2)", new Font("Segoe UI", 9, FontStyle.Bold), Brushes.Blue, noktaB.Value.X + 8, noktaB.Value.Y - 8);
+                using (Font f = new Font("Segoe UI", 9, FontStyle.Bold))
+                using (Brush bYazi = new SolidBrush(Color.FromArgb(29, 78, 216)))
+                {
+                    g.DrawString("B (x₂, y₂)", f, bYazi, noktaB.Value.X + 8, noktaB.Value.Y - 8);
+                }
             }
         }
 
-        private void lnkGeri_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            this.FormClosing -= Hafta3Odev3_FormClosing;
-
-            Hafta3Odev2 odev2 = new Hafta3Odev2();
-            odev2.StartPosition = FormStartPosition.Manual;
-            odev2.Location = this.Location;
-            odev2.Size = this.Size;
-            odev2.FormBorderStyle = this.FormBorderStyle;
-
-            odev2.Show();
-            this.Close();
-        }
-
-        private void lnkSonraki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            this.FormClosing -= Hafta3Odev3_FormClosing;
-
-            Hafta3Odev4 odev4 = new Hafta3Odev4();
-            odev4.StartPosition = FormStartPosition.Manual;
-            odev4.Location = this.Location;
-            odev4.Size = this.Size;
-            odev4.FormBorderStyle = this.FormBorderStyle;
-
-            odev4.Show();
-            this.Close();
+            orijinalBmp?.Dispose();
+            aynalanmisBmp?.Dispose();
+            base.OnFormClosed(e);
         }
     }
 }
