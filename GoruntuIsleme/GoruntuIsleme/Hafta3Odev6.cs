@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Point = System.Drawing.Point;
+using Size = System.Drawing.Size;
 
 namespace GoruntuIsleme
 {
@@ -8,59 +10,263 @@ namespace GoruntuIsleme
     {
         private Bitmap orijinalBmp = null;
 
+        private ModernHapRozet rozetOrijinal;
+        private ModernHapRozet rozetDegistirme;
+        private ModernHapRozet rozetInterpolasyon;
+
+        private ModernSurgu surguOran;
+        private Label lblValOran;
+        private Label lblAnaliz;
+
         public Hafta3Odev6()
         {
             InitializeComponent();
-            this.FormClosing += Hafta3Odev6_FormClosing;
-
-            if (btnResimSec != null) btnResimSec.Click += btnResimSec_Click;
-            if (btnKucult != null) btnKucult.Click += btnKucult_Click;
-            if (lnkGeri != null) lnkGeri.LinkClicked += lnkGeri_LinkClicked;
-            if (lnkSonraki != null) lnkSonraki.LinkClicked += lnkSonraki_LinkClicked;
+            ModernArayuzuUygula();
         }
 
-        private void Hafta3Odev6_FormClosing(object sender, FormClosingEventArgs e)
+        private void ModernArayuzuUygula()
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // 1. Form Temel Ayarları (1250x750, Standart Kenarlık ve X ile Ana Menüye Dönüş)
+            FormGezintiYardimcisi.FormuHazirla(this);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.Text = "Hafta 3 - Ödev 6: Oransal Resim Küçültme (Piksel Değiştirme ve Bilineer İnterpolasyon)";
+
+            // Designer'daki tüm eski kontrolleri gizle
+            foreach (Control ctrl in this.Controls)
             {
-                Form1 anaForm = (Form1)Application.OpenForms["Form1"];
-                if (anaForm != null)
-                {
-                    anaForm.Show();
-                    anaForm.BringToFront();
-                }
-                else
-                {
-                    new Form1().Show();
-                }
+                ctrl.Visible = false;
             }
+
+            // 2. Üst Gezinti Barı
+            Panel pnlUst = FormGezintiYardimcisi.UstBarOlustur(
+                form: this,
+                baslik: "Hafta 3 - Ödev 6 | Oransal Resim Küçültme: Piksel Değiştirme vs Bilineer İnterpolasyon",
+                oncekiYazi: "< Ödev 5",
+                oncekiTikla: () =>
+                {
+                    Form odev5 = Application.OpenForms["Hafta3Odev5"];
+                    if (odev5 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev5);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev5());
+                },
+                sonrakiYazi: "Ödev 7 >",
+                sonrakiTikla: () =>
+                {
+                    Form odev7 = Application.OpenForms["Hafta3Odev7"];
+                    if (odev7 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev7);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev7());
+                }
+            );
+
+            // 3. Sağ Kontrol Paneli
+            Panel pnlSag = FormGezintiYardimcisi.SagKontrolPaneliOlustur(this, 290);
+
+            Label lblKontrolBaslik = new Label
+            {
+                Text = "Oransal Küçültme",
+                Font = new Font("Segoe UI Semibold", 10.5f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                Location = new Point(18, 16),
+                AutoSize = true
+            };
+            pnlSag.Controls.Add(lblKontrolBaslik);
+
+            // Resim Seç Butonu
+            ModernHapButon btnModernResimSec = FormGezintiYardimcisi.ModernButonOlustur("📁 Resim Seç", true, 252, 38);
+            btnModernResimSec.Location = new Point(18, 48);
+            btnModernResimSec.Click += btnResimSec_Click;
+            pnlSag.Controls.Add(btnModernResimSec);
+
+            // Küçültme Oranı (%) Modern Sürgüsü (%5 - %95)
+            Label lblOranBaslik = new Label
+            {
+                Text = "Küçültme Oranı (%)",
+                Location = new Point(18, 102),
+                AutoSize = true,
+                Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi
+            };
+            pnlSag.Controls.Add(lblOranBaslik);
+
+            lblValOran = new Label
+            {
+                Text = "%50",
+                Location = new Point(210, 102),
+                Size = new Size(60, 18),
+                TextAlign = ContentAlignment.MiddleRight,
+                Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuMaviYazi
+            };
+            pnlSag.Controls.Add(lblValOran);
+
+            surguOran = new ModernSurgu
+            {
+                Minimum = 5,
+                Maximum = 95,
+                Value = 50,
+                Location = new Point(18, 122),
+                Size = new Size(252, 24)
+            };
+            surguOran.Scroll += (s, e) =>
+            {
+                lblValOran.Text = $"%{surguOran.Value}";
+                if (orijinalBmp != null) btnKucult_Click(null, null);
+            };
+            pnlSag.Controls.Add(surguOran);
+
+            // Resmi Küçült Butonu
+            ModernHapButon btnModernKucult = FormGezintiYardimcisi.ModernButonOlustur("📉 Resmi Küçült ve Karşılaştır", true, 252, 40);
+            btnModernKucult.Location = new Point(18, 158);
+            btnModernKucult.Click += btnKucult_Click;
+            pnlSag.Controls.Add(btnModernKucult);
+
+            // Açık Mavi Bilgi Kartı
+            ModernKartPanel bilgiKarti = FormGezintiYardimcisi.AcikMaviBilgiKartiOlustur(
+                konum: new Point(18, 214),
+                boyut: new Size(252, 340),
+                icerikEtiketi: out Label lblBilgiKart
+            );
+            lblBilgiKart.Text =
+                "Küçültme Yöntemleri:\n\n" +
+                "• Tuval boyutu orijinal görüntüyle aynı tutulur; küçültülen resim sol üst köşeye yerleştirilir.\n\n" +
+                "1. Piksel Değiştirme (Subsampling):\n" +
+                "Belirli adımlarla piksel atlayarak örnek alır. Hızlıdır ancak keskin kenarlarda basamaklanma yapabilir.\n\n" +
+                "2. Bilineer İnterpolasyon:\n" +
+                "Komşu 4 pikselin ağırlıklı ortalamasını hesaplayarak daha pürüzsüz küçültme sağlar.";
+            pnlSag.Controls.Add(bilgiKarti);
+
+            // 4. Orta Çalışma Alanı (Üst: 3 Karşılaştırma Kartı | Alt: Analiz Şeridi)
+            Panel pnlOrta = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                BackColor = FormGezintiYardimcisi.TemaZemin
+            };
+
+            TableLayoutPanel anaYerlesim = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+
+            // 3 Sütunlu Karşılaştırma Izgarası
+            TableLayoutPanel goruntuIzgara = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1
+            };
+            goruntuIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            goruntuIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            goruntuIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34f));
+            goruntuIzgara.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+            rozetOrijinal = new ModernHapRozet(); rozetOrijinal.MetinGuncelle("%100");
+            rozetDegistirme = new ModernHapRozet(); rozetDegistirme.MetinGuncelle("Bekleniyor");
+            rozetInterpolasyon = new ModernHapRozet(); rozetInterpolasyon.MetinGuncelle("Bekleniyor");
+
+            MevcutPictureBoxKartaTasi(goruntuIzgara, 0, 0, "Orijinal Resim", picOrijinal, FormGezintiYardimcisi.TemaZemin, rozetOrijinal);
+            MevcutPictureBoxKartaTasi(goruntuIzgara, 1, 0, "Piksel Değiştirme", picDegistirme, FormGezintiYardimcisi.TemaZemin, rozetDegistirme);
+            MevcutPictureBoxKartaTasi(goruntuIzgara, 2, 0, "Bilineer İnterpolasyon", picInterpolasyon, FormGezintiYardimcisi.TemaZemin, rozetInterpolasyon);
+
+            // Alt Analiz Şeridi
+            ModernKartPanel altSerit = FormGezintiYardimcisi.AltAnalizSeridiOlustur(
+                "Bir resim seçin, küçültme yüzdesini (%5–%95) belirleyin ve iki küçültme yöntemini yan yana inceleyin.",
+                out lblAnaliz,
+                "Oransal Küçültme"
+            );
+
+            anaYerlesim.Controls.Add(goruntuIzgara, 0, 0);
+            anaYerlesim.Controls.Add(altSerit, 0, 1);
+            pnlOrta.Controls.Add(anaYerlesim);
+
+            this.Controls.Add(pnlOrta);
+            FormGezintiYardimcisi.YerlesimiDuzenle(this, pnlUst, pnlSag, pnlOrta);
+        }
+
+        private void MevcutPictureBoxKartaTasi(
+            TableLayoutPanel tablo,
+            int sutun,
+            int satir,
+            string baslik,
+            PictureBox mevcutPb,
+            Color zeminRengi,
+            ModernHapRozet sagUstRozet)
+        {
+            ModernKartPanel kart = new ModernKartPanel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(6),
+                Padding = new Padding(12)
+            };
+
+            Panel pnlKartUst = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.White
+            };
+
+            Label lbl = new Label
+            {
+                Text = baslik,
+                UseMnemonic = false,
+                AutoSize = true,
+                Location = new Point(0, 4),
+                Font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                BackColor = Color.White
+            };
+            pnlKartUst.Controls.Add(lbl);
+
+            if (sagUstRozet != null)
+            {
+                sagUstRozet.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                sagUstRozet.Location = new Point(pnlKartUst.Width - sagUstRozet.Width - 2, 1);
+                pnlKartUst.Resize += (s, e) =>
+                {
+                    sagUstRozet.Location = new Point(pnlKartUst.Width - sagUstRozet.Width - 2, 1);
+                };
+                pnlKartUst.Controls.Add(sagUstRozet);
+                sagUstRozet.BringToFront();
+            }
+
+            mevcutPb.Parent?.Controls.Remove(mevcutPb);
+            mevcutPb.Visible = true;
+            mevcutPb.Dock = DockStyle.Fill;
+            mevcutPb.SizeMode = PictureBoxSizeMode.Zoom;
+            mevcutPb.BorderStyle = BorderStyle.None;
+            mevcutPb.BackColor = zeminRengi;
+
+            kart.Controls.Add(mevcutPb);
+            kart.Controls.Add(pnlKartUst);
+            tablo.Controls.Add(kart, sutun, satir);
         }
 
         private void btnResimSec_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog ofd = new OpenFileDialog())
+            string dosyaYolu = FormGezintiYardimcisi.ResimDosyasiSec("Oransal Küçültme İçin Resim Seçiniz");
+            if (string.IsNullOrEmpty(dosyaYolu)) return;
+
+            orijinalBmp?.Dispose();
+            using (Bitmap temp = new Bitmap(dosyaYolu))
             {
-                ofd.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.png;*.bmp";
-                if (ofd.ShowDialog() == DialogResult.OK)
-                {
-                    orijinalBmp?.Dispose();
-                    using (Bitmap temp = new Bitmap(ofd.FileName))
-                    {
-                        orijinalBmp = new Bitmap(temp);
-                    }
-
-                    if (picOrijinal != null)
-                    {
-                        picOrijinal.Image?.Dispose();
-                        picOrijinal.Image = new Bitmap(orijinalBmp);
-                    }
-
-                    if (lblBilgi != null)
-                    {
-                        lblBilgi.Text = $"Resim Yüklendi: {orijinalBmp.Width}x{orijinalBmp.Height} px\nKüçültme yüzdesini girip butona basınız.";
-                    }
-                }
+                orijinalBmp = new Bitmap(temp);
             }
+
+            picOrijinal.Image?.Dispose();
+            picOrijinal.SizeMode = PictureBoxSizeMode.Zoom;
+            picOrijinal.Image = new Bitmap(orijinalBmp);
+
+            rozetOrijinal.MetinGuncelle($"{orijinalBmp.Width}×{orijinalBmp.Height}");
+            lblAnaliz.Text = $"Resim yüklendi ({orijinalBmp.Width}×{orijinalBmp.Height} px) • Küçültme oranı: %{surguOran.Value}";
+            btnKucult_Click(null, null);
         }
 
         private void btnKucult_Click(object sender, EventArgs e)
@@ -71,7 +277,7 @@ namespace GoruntuIsleme
                 return;
             }
 
-            double yuzde = (double)numOran.Value;
+            double yuzde = surguOran.Value;
             double oran = yuzde / 100.0;
 
             int kaynakW = orijinalBmp.Width;
@@ -82,20 +288,20 @@ namespace GoruntuIsleme
 
             this.Cursor = Cursors.WaitCursor;
 
-            // Hocanın slaytındaki gibi: Tuval orijinal boyutta kalır, küçülen resim sol üste oturur
+            // Tuval orijinal boyutta kalır, küçülen resim sol üste oturur
             Bitmap bmpDegistirme = new Bitmap(kaynakW, kaynakH);
             using (Graphics g = Graphics.FromImage(bmpDegistirme))
             {
-                g.Clear(Color.LightGray); // Arka plan belli olsun diye gri tuval
+                g.Clear(Color.FromArgb(203, 213, 225));
             }
 
             Bitmap bmpInterpolasyon = new Bitmap(kaynakW, kaynakH);
             using (Graphics g = Graphics.FromImage(bmpInterpolasyon))
             {
-                g.Clear(Color.LightGray);
+                g.Clear(Color.FromArgb(203, 213, 225));
             }
 
-            // --- YÖNTEM A: PİKSEL DEĞİŞTİRME ---
+            // YÖNTEM A: PİKSEL DEĞİŞTİRME
             for (int y = 0; y < hedefH; y++)
             {
                 int srcY = Math.Min((int)Math.Floor(y / oran), kaynakH - 1);
@@ -106,7 +312,7 @@ namespace GoruntuIsleme
                 }
             }
 
-            // --- YÖNTEM B: PİKSEL İNTERPOLASYONU ---
+            // YÖNTEM B: PİKSEL İNTERPOLASYONU
             for (int y = 0; y < hedefH; y++)
             {
                 float gy = (float)(y / oran);
@@ -131,52 +337,32 @@ namespace GoruntuIsleme
                     int b = (int)(c11.B * (1 - dx) * (1 - dy) + c21.B * dx * (1 - dy) + c12.B * (1 - dx) * dy + c22.B * dx * dy);
 
                     bmpInterpolasyon.SetPixel(x, y, Color.FromArgb(
-                        Math.Max(0, Math.Min(255, r)),
-                        Math.Max(0, Math.Min(255, gVal)),
-                        Math.Max(0, Math.Min(255, b))
+                        Math.Clamp(r, 0, 255),
+                        Math.Clamp(gVal, 0, 255),
+                        Math.Clamp(b, 0, 255)
                     ));
                 }
             }
 
-            if (picDegistirme != null)
-            {
-                picDegistirme.Image?.Dispose();
-                picDegistirme.SizeMode = PictureBoxSizeMode.Zoom;
-                picDegistirme.Image = bmpDegistirme;
-            }
+            picDegistirme.Image?.Dispose();
+            picDegistirme.SizeMode = PictureBoxSizeMode.Zoom;
+            picDegistirme.Image = bmpDegistirme;
 
-            if (picInterpolasyon != null)
-            {
-                picInterpolasyon.Image?.Dispose();
-                picInterpolasyon.SizeMode = PictureBoxSizeMode.Zoom;
-                picInterpolasyon.Image = bmpInterpolasyon;
-            }
+            picInterpolasyon.Image?.Dispose();
+            picInterpolasyon.SizeMode = PictureBoxSizeMode.Zoom;
+            picInterpolasyon.Image = bmpInterpolasyon;
 
-            if (lblBilgi != null)
-            {
-                lblBilgi.Text = $"Küçültme Oranı: %{yuzde}\n" +
-                                $"Orijinal Boyut : {kaynakW}x{kaynakH} px\n" +
-                                $"Yeni Boyut     : {hedefW}x{hedefH} px\n" +
-                                $"Sol: Orijinal | Orta: Piksel Değiştirme | Sağ: İnterpolasyon";
-            }
+            rozetDegistirme.MetinGuncelle($"%{yuzde} • {hedefW}×{hedefH}");
+            rozetInterpolasyon.MetinGuncelle($"%{yuzde} • {hedefW}×{hedefH}");
+            lblAnaliz.Text = $"Küçültme Oranı: %{yuzde} • Orijinal: {kaynakW}×{kaynakH} px → Yeni Boyut: {hedefW}×{hedefH} px";
 
             this.Cursor = Cursors.Default;
         }
 
-        private void lnkGeri_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            this.FormClosing -= Hafta3Odev6_FormClosing;
-            Hafta3Odev5 odev5 = new Hafta3Odev5();
-            odev5.Show();
-            this.Close();
-        }
-
-        private void lnkSonraki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            this.FormClosing -= Hafta3Odev6_FormClosing;
-            Hafta3Odev7 odev7 = new Hafta3Odev7();
-            odev7.Show();
-            this.Close();
+            orijinalBmp?.Dispose();
+            base.OnFormClosed(e);
         }
     }
 }

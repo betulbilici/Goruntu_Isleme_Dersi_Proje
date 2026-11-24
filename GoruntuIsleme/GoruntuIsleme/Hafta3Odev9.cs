@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Point = System.Drawing.Point;
+using Size = System.Drawing.Size;
 
 namespace GoruntuIsleme
 {
@@ -11,64 +14,271 @@ namespace GoruntuIsleme
     {
         private Bitmap orijinalBmp = null;
 
+        private ModernHapRozet rozetOrijinal;
+        private ModernHapRozet rozetDegistirme;
+        private ModernHapRozet rozetInterpolasyon;
+
+        private ModernSurgu surguKatsayi;
+        private Label lblValKatsayi;
+        private Label lblBilgiKart;
+        private Label lblAnaliz;
+
         public Hafta3Odev9()
         {
             InitializeComponent();
-            this.FormClosing += Hafta3Odev9_FormClosing;
-
-            if (btnResimSec != null) btnResimSec.Click += btnResimSec_Click;
-            if (btnBuyut != null) btnBuyut.Click += btnBuyut_Click;
-            if (lnkGeri != null) lnkGeri.LinkClicked += lnkGeri_LinkClicked;
-            if (lnkSonraki != null) lnkSonraki.LinkClicked += lnkSonraki_LinkClicked;
+            ModernArayuzuUygula();
         }
 
-        private void Hafta3Odev9_FormClosing(object sender, FormClosingEventArgs e)
+        private void ModernArayuzuUygula()
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // 1. Form Temel Ayarları (1250x750, Standart Kenarlık ve X ile Ana Menüye Dönüş)
+            FormGezintiYardimcisi.FormuHazirla(this);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.Text = "Hafta 3 - Ödev 9: Büyütmede Piksel Değiştirme ve İnterpolasyon Karşılaştırması";
+
+            // Designer'daki tüm eski kontrolleri gizle
+            foreach (Control ctrl in this.Controls)
             {
-                Form1 anaForm = (Form1)Application.OpenForms["Form1"];
-                if (anaForm != null)
-                {
-                    anaForm.Show();
-                    anaForm.BringToFront();
-                }
-                else
-                {
-                    new Form1().Show();
-                }
+                ctrl.Visible = false;
             }
+
+            // 2. Üst Gezinti Barı
+            Panel pnlUst = FormGezintiYardimcisi.UstBarOlustur(
+                form: this,
+                baslik: "Hafta 3 - Ödev 9 | Yüksek Hızlı Büyütme: Piksel Değiştirme vs Bilineer İnterpolasyon",
+                oncekiYazi: "< Ödev 8",
+                oncekiTikla: () =>
+                {
+                    Form odev8 = Application.OpenForms["Hafta3Odev8"];
+                    if (odev8 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev8);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev8());
+                },
+                sonrakiYazi: "Ödev 10 >",
+                sonrakiTikla: () =>
+                {
+                    Form odev10 = Application.OpenForms["Hafta3Odev10"];
+                    if (odev10 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev10);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev10());
+                }
+            );
+
+            // 3. Sağ Kontrol Paneli
+            Panel pnlSag = FormGezintiYardimcisi.SagKontrolPaneliOlustur(this, 290);
+
+            Label lblKontrolBaslik = new Label
+            {
+                Text = "Büyütme & Performans",
+                Font = new Font("Segoe UI Semibold", 10.5f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                Location = new Point(18, 16),
+                AutoSize = true
+            };
+            pnlSag.Controls.Add(lblKontrolBaslik);
+
+            // Resim Seç Butonu
+            ModernHapButon btnModernResimSec = FormGezintiYardimcisi.ModernButonOlustur("📁 Resim Seç", true, 252, 38);
+            btnModernResimSec.Location = new Point(18, 48);
+            btnModernResimSec.Click += btnResimSec_Click;
+            pnlSag.Controls.Add(btnModernResimSec);
+
+            // Büyütme Katsayısı Sürgüsü (2x - 8x)
+            Label lblKatsayiBaslik = new Label
+            {
+                Text = "Büyütme Katsayısı",
+                Location = new Point(18, 102),
+                AutoSize = true,
+                Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi
+            };
+            pnlSag.Controls.Add(lblKatsayiBaslik);
+
+            lblValKatsayi = new Label
+            {
+                Text = "2x",
+                Location = new Point(210, 102),
+                Size = new Size(60, 18),
+                TextAlign = ContentAlignment.MiddleRight,
+                Font = new Font("Segoe UI Semibold", 9f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuMaviYazi
+            };
+            pnlSag.Controls.Add(lblValKatsayi);
+
+            surguKatsayi = new ModernSurgu
+            {
+                Minimum = 2,
+                Maximum = 8,
+                Value = 2,
+                Location = new Point(18, 122),
+                Size = new Size(252, 24)
+            };
+            surguKatsayi.Scroll += (s, e) =>
+            {
+                lblValKatsayi.Text = $"{surguKatsayi.Value}x";
+                if (orijinalBmp != null) btnBuyut_Click(null, null);
+            };
+            pnlSag.Controls.Add(surguKatsayi);
+
+            // Resmi Büyüt Butonu
+            ModernHapButon btnModernBuyut = FormGezintiYardimcisi.ModernButonOlustur("🔍 Resmi Büyüt", true, 252, 40);
+            btnModernBuyut.Location = new Point(18, 158);
+            btnModernBuyut.Click += btnBuyut_Click;
+            pnlSag.Controls.Add(btnModernBuyut);
+
+            // Açık Mavi Analiz ve Teknik Bilgi Kartı
+            ModernKartPanel bilgiKarti = FormGezintiYardimcisi.AcikMaviBilgiKartiOlustur(
+                konum: new Point(18, 214),
+                boyut: new Size(252, 340),
+                icerikEtiketi: out lblBilgiKart
+            );
+            lblBilgiKart.Text =
+                "Algoritma & Bellek Yapısı:\n\n" +
+                "• LockBits + Marshal.Copy:\n" +
+                "Görüntü 24-bit RGB bayt dizisine kilitlenerek GetPixel/SetPixel yerine doğrudan bellek üzerinden işlenir.\n\n" +
+                "• Parallel.For:\n" +
+                "Satır bazlı çok çekirdekli paralel hesaplama ile yüksek çözünürlüklerde dahi anlık sonuç üretir.\n\n" +
+                "• Sonuç Karşılaştırması:\n" +
+                "Orta kartta bloklaşma, sağ kartta yumuşak kenar geçişleri gözlemlenir.";
+            pnlSag.Controls.Add(bilgiKarti);
+
+            // 4. Orta Çalışma Alanı (Üst: 3 Karşılaştırma Kartı | Alt: Analiz Şeridi)
+            Panel pnlOrta = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                BackColor = FormGezintiYardimcisi.TemaZemin
+            };
+
+            TableLayoutPanel anaYerlesim = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Absolute, 50f));
+
+            // 3 Sütunlu Karşılaştırma Izgarası
+            TableLayoutPanel goruntuIzgara = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1
+            };
+            goruntuIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            goruntuIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+            goruntuIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.34f));
+            goruntuIzgara.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+            rozetOrijinal = new ModernHapRozet(); rozetOrijinal.MetinGuncelle("1x");
+            rozetDegistirme = new ModernHapRozet(); rozetDegistirme.MetinGuncelle("Bekleniyor");
+            rozetInterpolasyon = new ModernHapRozet(); rozetInterpolasyon.MetinGuncelle("Bekleniyor");
+
+            MevcutPictureBoxKartaTasi(goruntuIzgara, 0, 0, "Orijinal Resim", picOrijinal, FormGezintiYardimcisi.TemaZemin, rozetOrijinal);
+            MevcutPictureBoxKartaTasi(goruntuIzgara, 1, 0, "Piksel Değiştirme (Nearest)", picDegistirme, FormGezintiYardimcisi.TemaZemin, rozetDegistirme);
+            MevcutPictureBoxKartaTasi(goruntuIzgara, 2, 0, "Piksel İnterpolasyonu (Bilineer)", picInterpolasyon, FormGezintiYardimcisi.TemaZemin, rozetInterpolasyon);
+
+            // Alt Analiz Şeridi
+            ModernKartPanel altSerit = FormGezintiYardimcisi.AltAnalizSeridiOlustur(
+                "Bir resim seçin, büyütme katsayısını (2x–8x) belirleyin ve piksel değiştirme ile bilineer interpolasyonu karşılaştırın.",
+                out lblAnaliz,
+                "LockBits + Parallel"
+            );
+
+            anaYerlesim.Controls.Add(goruntuIzgara, 0, 0);
+            anaYerlesim.Controls.Add(altSerit, 0, 1);
+            pnlOrta.Controls.Add(anaYerlesim);
+
+            this.Controls.Add(pnlOrta);
+            FormGezintiYardimcisi.YerlesimiDuzenle(this, pnlUst, pnlSag, pnlOrta);
+        }
+
+        private void MevcutPictureBoxKartaTasi(
+            TableLayoutPanel tablo,
+            int sutun,
+            int satir,
+            string baslik,
+            PictureBox mevcutPb,
+            Color zeminRengi,
+            ModernHapRozet sagUstRozet)
+        {
+            ModernKartPanel kart = new ModernKartPanel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(6),
+                Padding = new Padding(12)
+            };
+
+            Panel pnlKartUst = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 28,
+                BackColor = Color.White
+            };
+
+            Label lbl = new Label
+            {
+                Text = baslik,
+                UseMnemonic = false,
+                AutoSize = true,
+                Location = new Point(0, 4),
+                Font = new Font("Segoe UI Semibold", 9.5f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                BackColor = Color.White
+            };
+            pnlKartUst.Controls.Add(lbl);
+
+            if (sagUstRozet != null)
+            {
+                sagUstRozet.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                sagUstRozet.Location = new Point(pnlKartUst.Width - sagUstRozet.Width - 2, 1);
+                pnlKartUst.Resize += (s, e) =>
+                {
+                    sagUstRozet.Location = new Point(pnlKartUst.Width - sagUstRozet.Width - 2, 1);
+                };
+                pnlKartUst.Controls.Add(sagUstRozet);
+                sagUstRozet.BringToFront();
+            }
+
+            mevcutPb.Parent?.Controls.Remove(mevcutPb);
+            mevcutPb.Visible = true;
+            mevcutPb.Dock = DockStyle.Fill;
+            mevcutPb.SizeMode = PictureBoxSizeMode.Zoom;
+            mevcutPb.BorderStyle = BorderStyle.None;
+            mevcutPb.BackColor = zeminRengi;
+
+            kart.Controls.Add(mevcutPb);
+            kart.Controls.Add(pnlKartUst);
+            tablo.Controls.Add(kart, sutun, satir);
         }
 
         private void btnResimSec_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog ofd = new OpenFileDialog())
+            string dosyaYolu = FormGezintiYardimcisi.ResimDosyasiSec("Büyütme Karşılaştırması İçin Resim Seçiniz");
+            if (string.IsNullOrEmpty(dosyaYolu)) return;
+
+            orijinalBmp?.Dispose();
+            using (Bitmap temp = new Bitmap(dosyaYolu))
             {
-                ofd.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.png;*.bmp";
-                if (ofd.ShowDialog() == DialogResult.OK)
-                {
-                    orijinalBmp?.Dispose();
-                    using (Bitmap temp = new Bitmap(ofd.FileName))
-                    {
-                        orijinalBmp = new Bitmap(temp);
-                    }
-
-                    if (picOrijinal != null)
-                    {
-                        picOrijinal.Image?.Dispose();
-                        picOrijinal.SizeMode = PictureBoxSizeMode.Zoom;
-                        picOrijinal.Image = new Bitmap(orijinalBmp);
-                    }
-
-                    if (picDegistirme != null) picDegistirme.Image = null;
-                    if (picInterpolasyon != null) picInterpolasyon.Image = null;
-
-                    if (lblBilgi != null)
-                    {
-                        lblBilgi.Text = $"Resim Yüklendi: {orijinalBmp.Width}x{orijinalBmp.Height} px\n" +
-                                        $"Büyütme katsayısını belirleyip 'Resmi Büyüt' butonuna basınız.";
-                    }
-                }
+                orijinalBmp = new Bitmap(temp);
             }
+
+            picOrijinal.Image?.Dispose();
+            picOrijinal.SizeMode = PictureBoxSizeMode.Zoom;
+            picOrijinal.Image = new Bitmap(orijinalBmp);
+
+            picDegistirme.Image?.Dispose();
+            picDegistirme.Image = null;
+
+            picInterpolasyon.Image?.Dispose();
+            picInterpolasyon.Image = null;
+
+            rozetOrijinal.MetinGuncelle($"{orijinalBmp.Width}×{orijinalBmp.Height}");
+            lblAnaliz.Text = $"Resim yüklendi ({orijinalBmp.Width}×{orijinalBmp.Height} px) • Katsayı: {surguKatsayi.Value}x";
+            btnBuyut_Click(null, null);
         }
 
         private void btnBuyut_Click(object sender, EventArgs e)
@@ -79,7 +289,7 @@ namespace GoruntuIsleme
                 return;
             }
 
-            int katsayi = (int)numKatsayi.Value;
+            int katsayi = surguKatsayi.Value;
             int kaynakW = orijinalBmp.Width;
             int kaynakH = orijinalBmp.Height;
 
@@ -87,6 +297,7 @@ namespace GoruntuIsleme
             int hedefH = kaynakH * katsayi;
 
             this.Cursor = Cursors.WaitCursor;
+            Stopwatch sw = Stopwatch.StartNew();
 
             // 1. Kaynak resmi 24-bit RGB formatında belleğe kilitleyip bayt dizisine alma
             Bitmap kaynak24 = new Bitmap(kaynakW, kaynakH, PixelFormat.Format24bppRgb);
@@ -124,7 +335,7 @@ namespace GoruntuIsleme
 
                 for (int x = 0; x < hedefW; x++)
                 {
-                    // --- A: PİKSEL DEĞİŞTİRME (NEAREST NEIGHBOR) ---
+                    // A: PİKSEL DEĞİŞTİRME (NEAREST NEIGHBOR)
                     int srcX = Math.Min(x / katsayi, kaynakW - 1);
                     int srcPixelIdx = (rowSrcY * srcStride) + (srcX * 3);
 
@@ -133,7 +344,7 @@ namespace GoruntuIsleme
                     degistirmeBuffer[dIdx + 1] = srcBuffer[srcPixelIdx + 1]; // Green
                     degistirmeBuffer[dIdx + 2] = srcBuffer[srcPixelIdx + 2]; // Red
 
-                    // --- B: PİKSEL İNTERPOLASYONU (BILINEAR) ---
+                    // B: PİKSEL İNTERPOLASYONU (BILINEAR)
                     float gx = (float)x / katsayi;
                     int x1 = Math.Min((int)Math.Floor(gx), kaynakW - 1);
                     int x2 = Math.Min(x1 + 1, kaynakW - 1);
@@ -144,7 +355,7 @@ namespace GoruntuIsleme
                     int idx12 = (y2 * srcStride) + (x1 * 3);
                     int idx22 = (y2 * srcStride) + (x2 * 3);
 
-                    for (int c = 0; c < 3; c++) // c = 0: B, 1: G, 2: R
+                    for (int c = 0; c < 3; c++)
                     {
                         byte val11 = srcBuffer[idx11 + c];
                         byte val21 = srcBuffer[idx21 + c];
@@ -156,7 +367,7 @@ namespace GoruntuIsleme
                                     val12 * (1 - dx) * dy +
                                     val22 * dx * dy;
 
-                        interpolasyonBuffer[rowInterpIdx + (x * 3) + c] = (byte)Math.Max(0, Math.Min(255, (int)Math.Round(val)));
+                        interpolasyonBuffer[rowInterpIdx + (x * 3) + c] = (byte)Math.Clamp((int)Math.Round(val), 0, 255);
                     }
                 }
             });
@@ -179,48 +390,36 @@ namespace GoruntuIsleme
             bmpInterpolasyon.UnlockBits(dstData2);
 
             kaynak24.Dispose();
+            sw.Stop();
 
             // 4. PictureBox'lara atama
-            if (picDegistirme != null)
-            {
-                picDegistirme.Image?.Dispose();
-                picDegistirme.SizeMode = PictureBoxSizeMode.Zoom;
-                picDegistirme.Image = bmpDegistirme;
-            }
+            picDegistirme.Image?.Dispose();
+            picDegistirme.SizeMode = PictureBoxSizeMode.Zoom;
+            picDegistirme.Image = bmpDegistirme;
 
-            if (picInterpolasyon != null)
-            {
-                picInterpolasyon.Image?.Dispose();
-                picInterpolasyon.SizeMode = PictureBoxSizeMode.Zoom;
-                picInterpolasyon.Image = bmpInterpolasyon;
-            }
+            picInterpolasyon.Image?.Dispose();
+            picInterpolasyon.SizeMode = PictureBoxSizeMode.Zoom;
+            picInterpolasyon.Image = bmpInterpolasyon;
 
-            if (lblBilgi != null)
-            {
-                lblBilgi.Text = $"İşlem Tamamlandı:\n" +
-                                $"• Büyütme Katsayısı: {katsayi}x\n" +
-                                $"• Orijinal Boyut   : {kaynakW}x{kaynakH} px\n" +
-                                $"• Yeni Boyut       : {hedefW}x{hedefH} px\n" +
-                                $"• Analiz: Orta resimde piksel bloklaşması oluşurken sağdaki resimde kenar geçişleri pürüzsüzleştirildi.";
-            }
+            rozetDegistirme.MetinGuncelle($"{katsayi}x • {hedefW}×{hedefH}");
+            rozetInterpolasyon.MetinGuncelle($"{katsayi}x • {hedefW}×{hedefH}");
 
+            lblBilgiKart.Text =
+                "Son İşlem İstatistikleri:\n\n" +
+                $"• Büyütme Katsayısı: {katsayi}x\n" +
+                $"• Orijinal Boyut: {kaynakW} × {kaynakH} px\n" +
+                $"• Yeni Boyut: {hedefW} × {hedefH} px\n" +
+                $"• İşlem Süresi: {sw.ElapsedMilliseconds} ms\n\n" +
+                "Analiz: Orta resimde piksel bloklaşması oluşurken sağdaki resimde kenar geçişleri pürüzsüzleştirildi.";
+
+            lblAnaliz.Text = $"Katsayı: {katsayi}x • Orijinal: {kaynakW}×{kaynakH} px → Yeni: {hedefW}×{hedefH} px • Süre: {sw.ElapsedMilliseconds} ms";
             this.Cursor = Cursors.Default;
         }
 
-        private void lnkGeri_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            this.FormClosing -= Hafta3Odev9_FormClosing;
-            Hafta3Odev8 odev8 = new Hafta3Odev8();
-            odev8.Show();
-            this.Close();
-        }
-
-        private void lnkSonraki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            this.FormClosing -= Hafta3Odev9_FormClosing;
-            Hafta3Odev10 odev10 = new Hafta3Odev10();
-            odev10.Show();
-            this.Close();
+            orijinalBmp?.Dispose();
+            base.OnFormClosed(e);
         }
     }
 }
