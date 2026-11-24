@@ -13,22 +13,14 @@ namespace GoruntuIsleme
 
         // Sol taraftaki 48 adet özel renk kutucuğu
         private PictureBox[] ozelRenkKutulari = new PictureBox[48];
-        private int secilenKutuIndex = -1; // Tıklanan veya silinen hedef kutuyu takip eder
+        private int secilenKutuIndex = -1;
 
         public Hafta2Odev10()
         {
             InitializeComponent();
-            this.AutoScaleMode = AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(1250, 750);
-            this.StartPosition = FormStartPosition.CenterScreen;
+            ModernTemaUygula();
 
-            // X butonu ile güvenli dönüş
-            this.FormClosing += Hafta2Odev10_FormClosing;
-
-            // Olay bağlantıları
             if (btnOzelEkle != null) btnOzelEkle.Click += btnOzelEkle_Click;
-            if (lnkGeri != null) lnkGeri.LinkClicked += lnkGeri_LinkClicked;
-            if (lnkAnaMenu != null) lnkAnaMenu.LinkClicked += lnkAnaMenu_LinkClicked;
             if (btnPaletiTemizle != null) btnPaletiTemizle.Click += btnPaletiTemizle_Click;
 
             if (picAnaRenk != null)
@@ -46,36 +38,119 @@ namespace GoruntuIsleme
             this.Load += Hafta2Odev10_Load;
         }
 
+        private void ModernTemaUygula()
+        {
+            // 1. Form Temel Ayarları (1250x750, Standart Kenarlık ve X ile Ana Menüye Dönüş)
+            FormGezintiYardimcisi.FormuHazirla(this);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.Text = "Hafta 2 - Ödev 10 | 16 Milyon Renk Spektrumu ve Özel Palet";
+
+            // Eski alttaki linkleri gizle (üst bara alıyoruz)
+            if (lnkGeri != null) lnkGeri.Visible = false;
+            if (lnkAnaMenu != null) lnkAnaMenu.Visible = false;
+
+            // 2. Üst Gezinti Barı
+            Panel pnlUst = FormGezintiYardimcisi.UstBarOlustur(
+                form: this,
+                baslik: "Hafta 2 - Ödev 10 | 16 Milyon Renk Spektrumu ve Özel Palet",
+                oncekiYazi: "< Ödev 9",
+                oncekiTikla: () =>
+                {
+                    Form odev9 = Application.OpenForms["Hafta2Odev9"];
+                    if (odev9 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev9);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta2Odev9());
+                },
+                sonrakiYazi: "Hafta 3 >",
+                sonrakiTikla: () =>
+                {
+                    Form hafta3 = Application.OpenForms["Hafta3Odev1"];
+                    if (hafta3 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, hafta3);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta3Odev1());
+                }
+            );
+
+            // 3. Mevcut kontrollerin konumlarını üst barın altına hizala ve modernleştir
+            int ustKaydirma = 55;
+            int yatayKaydirma = 120;
+
+            foreach (Control c in this.Controls)
+            {
+                if (c == pnlUst) continue;
+                c.Location = new Point(c.Location.X + yatayKaydirma, c.Location.Y + ustKaydirma);
+            }
+
+            // Etiket yazı tipleri ve renkleri
+            Label[] etiketler = { label1, label2, label3, label4, label5, label6, label7 };
+            foreach (Label lbl in etiketler)
+            {
+                if (lbl == null) continue;
+                lbl.Font = new Font("Segoe UI Semibold", 10f, FontStyle.Bold);
+                lbl.ForeColor = FormGezintiYardimcisi.KoyuYazi;
+            }
+
+            // Özel renkler paneli görünümü
+            if (pnlOzelRenkler != null)
+            {
+                pnlOzelRenkler.BackColor = Color.White;
+                pnlOzelRenkler.BorderStyle = BorderStyle.FixedSingle;
+            }
+
+            // RGB TextBox stilleri
+            TextBox[] kutular = { txtR, txtG, txtB };
+            foreach (TextBox tb in kutular)
+            {
+                if (tb == null) continue;
+                tb.Font = new Font("Segoe UI Semibold", 10f, FontStyle.Bold);
+                tb.TextAlign = HorizontalAlignment.Center;
+                tb.BackColor = Color.White;
+            }
+
+            // Butonları temaya uyarla
+            if (btnOzelEkle != null)
+            {
+                btnOzelEkle.FlatStyle = FlatStyle.Flat;
+                btnOzelEkle.FlatAppearance.BorderSize = 0;
+                btnOzelEkle.BackColor = Color.FromArgb(30, 58, 95);
+                btnOzelEkle.ForeColor = Color.White;
+                btnOzelEkle.Font = new Font("Segoe UI Semibold", 10f, FontStyle.Bold);
+                btnOzelEkle.Cursor = Cursors.Hand;
+            }
+
+            if (btnPaletiTemizle != null)
+            {
+                btnPaletiTemizle.FlatStyle = FlatStyle.Flat;
+                btnPaletiTemizle.FlatAppearance.BorderColor = FormGezintiYardimcisi.AcikMaviKenar;
+                btnPaletiTemizle.FlatAppearance.BorderSize = 1;
+                btnPaletiTemizle.BackColor = FormGezintiYardimcisi.AcikMaviZemin;
+                btnPaletiTemizle.ForeColor = FormGezintiYardimcisi.KoyuMaviYazi;
+                btnPaletiTemizle.Font = new Font("Segoe UI Semibold", 10f, FontStyle.Bold);
+                btnPaletiTemizle.Cursor = Cursors.Hand;
+            }
+
+            // Sol alt kısma kısa kullanım bilgi kartı ekle
+            ModernKartPanel bilgiKarti = FormGezintiYardimcisi.AcikMaviBilgiKartiOlustur(
+                konum: new Point(pnlOzelRenkler.Left, pnlOzelRenkler.Bottom + 20),
+                boyut: new Size(pnlOzelRenkler.Width, 165),
+                icerikEtiketi: out Label lblBilgi
+            );
+            lblBilgi.Text =
+                "Kullanım İpuçları:\n\n" +
+                "• Ortadaki renk düzleminden ana rengi, sağdaki şeritten koyuluk/açıklık tonunu seçiniz.\n" +
+                "• Sol Tık: Kutudaki rengi seçer.\n" +
+                "• Sağ Tık: İlgili renk kutusunu siler.";
+            this.Controls.Add(bilgiKarti);
+        }
+
         private void Hafta2Odev10_Load(object sender, EventArgs e)
         {
             OzelRenkKutulariniOlustur();
             AnaRenkSpektrumunuCiz();
             TonSkalasiniCiz(secilenTemelRenk);
             RengiGuncelle(secilenTemelRenk);
-        }
-
-        private void Hafta2Odev10_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                Form1 anaForm = (Form1)Application.OpenForms["Form1"];
-                if (anaForm != null)
-                {
-                    anaForm.StartPosition = FormStartPosition.Manual;
-                    anaForm.Location = this.Location;
-                    anaForm.Size = this.Size;
-                    anaForm.Show();
-                    anaForm.BringToFront();
-                }
-                else
-                {
-                    Form1 yeniForm = new Form1();
-                    yeniForm.StartPosition = FormStartPosition.Manual;
-                    yeniForm.Location = this.Location;
-                    yeniForm.Size = this.Size;
-                    yeniForm.Show();
-                }
-            }
         }
 
         // Sol taraftaki 6x8'lik 48 küçük renk kutucuğunu dinamik oluşturma ve ortalama
@@ -90,7 +165,6 @@ namespace GoruntuIsleme
             int kutuH = 32;
             int bosluk = 6;
 
-            // Panelin içinde tam ortalanması için sol ve üst boşluk hesabı:
             int toplamKutuGenisligi = (sutunSayisi * kutuW) + ((sutunSayisi - 1) * bosluk);
             int toplamKutuYuksekligi = (satirSayisi * kutuH) + ((satirSayisi - 1) * bosluk);
             int baslangicX = Math.Max(10, (pnlOzelRenkler.ClientSize.Width - toplamKutuGenisligi) / 2);
@@ -116,7 +190,6 @@ namespace GoruntuIsleme
                 {
                     if (e.Button == MouseButtons.Left)
                     {
-                        // Sol tık: Bu kutuyu hedef yap ve içindeki rengi önizlemeye al
                         secilenKutuIndex = index;
                         if (pb.BackColor != Color.White)
                         {
@@ -125,7 +198,6 @@ namespace GoruntuIsleme
                     }
                     else if (e.Button == MouseButtons.Right)
                     {
-                        // Sağ tık: Kutuyu sil ve bir sonraki eklenecek rengin hedefi yap
                         pb.BackColor = Color.White;
                         secilenKutuIndex = index;
                     }
@@ -143,15 +215,16 @@ namespace GoruntuIsleme
 
             int w = picAnaRenk.Width;
             int h = picAnaRenk.Height;
+            bmpAnaRenk?.Dispose();
             bmpAnaRenk = new Bitmap(w, h);
 
             for (int x = 0; x < w; x++)
             {
-                double hue = (double)x / w * 360.0; // X ekseni renk tonu (Hue)
+                double hue = (double)x / w * 360.0;
 
                 for (int y = 0; y < h; y++)
                 {
-                    double sat = 1.0 - ((double)y / h); // Y ekseni doygunluk (Saturation)
+                    double sat = 1.0 - ((double)y / h);
                     Color c = HsvToRgb(hue, sat, 1.0);
                     bmpAnaRenk.SetPixel(x, y, c);
                 }
@@ -160,18 +233,18 @@ namespace GoruntuIsleme
             picAnaRenk.Image = bmpAnaRenk;
         }
 
-        // Seçilen rengin açıktan koyuya ton skalasını (Value/Luminance şeridini) çizdirme
+        // Seçilen rengin açıktan koyuya ton skalasını çizdirme
         private void TonSkalasiniCiz(Color temelRenk)
         {
             if (picTonSkala == null || picTonSkala.Width <= 0 || picTonSkala.Height <= 0) return;
 
             int w = picTonSkala.Width;
             int h = picTonSkala.Height;
+            bmpTonSkala?.Dispose();
             bmpTonSkala = new Bitmap(w, h);
 
             for (int y = 0; y < h; y++)
             {
-                // Üst kısım en açık/parlak (1.0), alt kısım en koyu/siyah (0.0)
                 double factor = 1.0 - ((double)y / (h - 1));
 
                 int r = (int)(temelRenk.R * factor);
@@ -186,22 +259,14 @@ namespace GoruntuIsleme
                 }
             }
 
-            picTonSkala.Image?.Dispose();
             picTonSkala.Image = bmpTonSkala;
         }
 
-        // Ortadaki Ana Renk tablosuna tıklandığında / sürüklendiğinde
-        private void PicAnaRenk_MouseDown(object sender, MouseEventArgs e)
-        {
-            AnaRenkSec(e);
-        }
+        private void PicAnaRenk_MouseDown(object sender, MouseEventArgs e) => AnaRenkSec(e);
 
         private void PicAnaRenk_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
-            {
-                AnaRenkSec(e);
-            }
+            if (e.Button == MouseButtons.Left) AnaRenkSec(e);
         }
 
         private void AnaRenkSec(MouseEventArgs e)
@@ -213,18 +278,11 @@ namespace GoruntuIsleme
             RengiGuncelle(secilenTemelRenk);
         }
 
-        // Sağdaki Ton şeridine tıklandığında / sürüklendiğinde
-        private void PicTonSkala_MouseDown(object sender, MouseEventArgs e)
-        {
-            TonSec(e);
-        }
+        private void PicTonSkala_MouseDown(object sender, MouseEventArgs e) => TonSec(e);
 
         private void PicTonSkala_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
-            {
-                TonSec(e);
-            }
+            if (e.Button == MouseButtons.Left) TonSec(e);
         }
 
         private void TonSec(MouseEventArgs e)
@@ -235,7 +293,6 @@ namespace GoruntuIsleme
             RengiGuncelle(sonRenk);
         }
 
-        // Seçilen rengin RGB değerlerini ve önizlemesini güncelleme
         private void RengiGuncelle(Color c)
         {
             secilenSonRenk = c;
@@ -246,19 +303,16 @@ namespace GoruntuIsleme
             if (txtB != null) txtB.Text = c.B.ToString();
         }
 
-        // "Özel Renklere Ekle" Butonu (Akıllı hedefleme: seçili kutu, yoksa ilk boş kutu)
         private void btnOzelEkle_Click(object sender, EventArgs e)
         {
             int hedefIndex = -1;
 
-            // 1. Kullanıcı spesifik bir kutuya tıklamışsa doğrudan oraya ata
             if (secilenKutuIndex >= 0 && secilenKutuIndex < 48)
             {
                 hedefIndex = secilenKutuIndex;
             }
             else
             {
-                // 2. Tıklanmamışsa ilk boş (beyaz) kutuyu bul
                 for (int i = 0; i < 48; i++)
                 {
                     if (ozelRenkKutulari[i] != null && ozelRenkKutulari[i].BackColor == Color.White)
@@ -269,7 +323,6 @@ namespace GoruntuIsleme
                 }
             }
 
-            // Hiç boş kutu kalmamışsa ve seçili kutu da yoksa palet doludur
             if (hedefIndex == -1)
             {
                 MessageBox.Show("Kişiye özel renk paletiniz tamamen dolu. Yeni renk eklemek için bir kutuyu sağ tık ile silebilir veya değiştirmek istediğiniz kutuya sol tıklayabilirsiniz.",
@@ -277,15 +330,13 @@ namespace GoruntuIsleme
                 return;
             }
 
-            // Hedef kutuya rengi kaydet
             if (ozelRenkKutulari[hedefIndex] != null)
             {
                 ozelRenkKutulari[hedefIndex].BackColor = secilenSonRenk;
-                secilenKutuIndex = -1; // Seçimi sıfırla ki bir sonraki işlem ilk boş kutuya devam edebilsin
+                secilenKutuIndex = -1;
             }
         }
 
-        // "Paleti Temizle" Butonu: Tüm kutucukları sıfırlar
         private void btnPaletiTemizle_Click(object sender, EventArgs e)
         {
             DialogResult secim = MessageBox.Show("Özel renk paletini tamamen temizlemek istiyor musunuz?",
@@ -303,7 +354,6 @@ namespace GoruntuIsleme
             }
         }
 
-        // HSV renk uzayından standart RGB'ye matematiksel dönüşüm
         private Color HsvToRgb(double h, double s, double v)
         {
             int hi = (int)Math.Floor(h / 60.0) % 6;
@@ -326,44 +376,11 @@ namespace GoruntuIsleme
             }
         }
 
-        // Ödev 9'a Geri Dön Linki
-        private void lnkGeri_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            this.FormClosing -= Hafta2Odev10_FormClosing;
-
-            Hafta2Odev9 odev9 = new Hafta2Odev9();
-            odev9.StartPosition = FormStartPosition.Manual;
-            odev9.Location = this.Location;
-            odev9.Size = this.Size;
-            odev9.FormBorderStyle = this.FormBorderStyle;
-
-            odev9.Show();
-            this.Close();
-        }
-
-        // Ana Menüye (Form1) Dön Linki
-        private void lnkAnaMenu_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            this.FormClosing -= Hafta2Odev10_FormClosing;
-
-            Form1 anaForm = (Form1)Application.OpenForms["Form1"];
-            if (anaForm != null)
-            {
-                anaForm.StartPosition = FormStartPosition.Manual;
-                anaForm.Location = this.Location;
-                anaForm.Size = this.Size;
-                anaForm.Show();
-                anaForm.BringToFront();
-            }
-            else
-            {
-                Form1 yeniForm = new Form1();
-                yeniForm.StartPosition = FormStartPosition.Manual;
-                yeniForm.Location = this.Location;
-                yeniForm.Size = this.Size;
-                yeniForm.Show();
-            }
-            this.Close();
+            bmpAnaRenk?.Dispose();
+            bmpTonSkala?.Dispose();
+            base.OnFormClosed(e);
         }
     }
 }

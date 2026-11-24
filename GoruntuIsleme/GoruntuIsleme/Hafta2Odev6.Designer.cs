@@ -198,7 +198,7 @@
             lnkGeri.TabIndex = 13;
             lnkGeri.TabStop = true;
             lnkGeri.Text = "◀ Ödev 5'e Dön";
-            lnkGeri.LinkClicked += lnkGeri_LinkClicked;
+            
             // 
             // lnkSonraki
             // 
