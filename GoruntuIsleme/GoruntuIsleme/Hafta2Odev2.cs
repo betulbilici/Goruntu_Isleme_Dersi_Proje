@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
+using Point = System.Drawing.Point;
+using Size = System.Drawing.Size;
 
 namespace GoruntuIsleme
 {
@@ -11,111 +13,318 @@ namespace GoruntuIsleme
         private Mat orijinalMat = null;
         private int[] histogramVerisi = new int[256];
 
+        private ModernHapRozet rozetGiris;
+        private ModernHapRozet rozetCikis;
+        private ModernHapRozet rozetAralik;
+
+        private ModernSurgu surguMin;
+        private ModernSurgu surguMax;
+        private Label lblMinDeger;
+        private Label lblMaxDeger;
+        private Label lblAnaliz;
+
         public Hafta2Odev2()
         {
             InitializeComponent();
-            this.AutoScaleMode = AutoScaleMode.None;
-            this.StartPosition = FormStartPosition.CenterScreen;
-
-            // X butonuna basınca Form1'e güvenli dönüş
-            this.FormClosing += Hafta2Odev2_FormClosing;
-
-            // ComboBox başlangıç
-            if (cmbMod != null)
-            {
-                if (cmbMod.Items.Count == 0)
-                {
-                    cmbMod.Items.Add("Gri-Ton Eşikleme");
-                    cmbMod.Items.Add("Renkli Eşikleme (RGB)");
-                }
-                cmbMod.SelectedIndex = 0;
-                cmbMod.SelectedIndexChanged += (s, e) => EsiklemeUygula();
-            }
-
-            // TrackBar ayarları
-            if (trackMin != null && trackMax != null)
-            {
-                trackMin.Minimum = 0; trackMin.Maximum = 255; trackMin.Value = 50;
-                trackMax.Minimum = 0; trackMax.Maximum = 255; trackMax.Value = 200;
-
-                trackMin.Scroll += TrackBar_Scroll;
-                trackMax.Scroll += TrackBar_Scroll;
-            }
-
-            // Olay bağlantıları
-            if (btnResimSec != null) btnResimSec.Click += btnResimSec_Click;
-            if (lnkGeri != null) lnkGeri.LinkClicked += lnkGeri_LinkClicked;
-            if (lnkSonraki != null) lnkSonraki.LinkClicked += lnkSonraki_LinkClicked;
+            ModernArayuzuUygula();
         }
 
-        // X butonuna basıldığında Form1'e dönüş
-        private void Hafta2Odev2_FormClosing(object sender, FormClosingEventArgs e)
+        private void ModernArayuzuUygula()
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            // 1. Form Temel Ayarları (1250x750, Standart Kenarlık ve X ile Ana Menüye Dönüş)
+            FormGezintiYardimcisi.FormuHazirla(this);
+            this.FormBorderStyle = FormBorderStyle.Sizable;
+            this.Text = "Hafta 2 - Ödev 2: Aralık Eşikleme (Thresholding) ve Histogram Analizi";
+
+            // Designer'daki tüm eski kontrolleri gizle
+            foreach (Control ctrl in this.Controls)
             {
-                Form1 anaForm = (Form1)Application.OpenForms["Form1"];
-                if (anaForm != null)
-                {
-                    anaForm.StartPosition = FormStartPosition.Manual;
-                    anaForm.Location = this.Location;
-                    anaForm.Show();
-                    anaForm.BringToFront();
-                }
-                else
-                {
-                    Form1 yeniForm = new Form1();
-                    yeniForm.StartPosition = FormStartPosition.Manual;
-                    yeniForm.Location = this.Location;
-                    yeniForm.Show();
-                }
+                ctrl.Visible = false;
             }
+
+            // 2. Üst Gezinti Barı
+            Panel pnlUst = FormGezintiYardimcisi.UstBarOlustur(
+                form: this,
+                baslik: "Hafta 2 - Ödev 2 | Aralık Eşikleme (Min - Max Thresholding) ve Histogram",
+                oncekiYazi: "< Ödev 1",
+                oncekiTikla: () =>
+                {
+                    Form odev1 = Application.OpenForms["Hafta2Odev1"];
+                    if (odev1 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, odev1);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta2Odev1());
+                },
+                sonrakiYazi: "Ödev 3 >",
+                sonrakiTikla: () => FormGezintiYardimcisi.FormGecisYap(this, new Hafta2Odev3())
+            );
+
+            // 3. Sağ Kontrol Paneli
+            Panel pnlSag = FormGezintiYardimcisi.SagKontrolPaneliOlustur(this, 290);
+
+            Label lblKontrolBaslik = new Label
+            {
+                Text = "Eşikleme Parametreleri",
+                Font = new Font("Segoe UI Semibold", 10.5f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                Location = new Point(18, 18),
+                AutoSize = true
+            };
+            pnlSag.Controls.Add(lblKontrolBaslik);
+
+            // Resim Seç Butonu
+            ModernHapButon btnModernResimSec = FormGezintiYardimcisi.ModernButonOlustur("📁 Resim Seç", true, 252, 40);
+            btnModernResimSec.Location = new Point(18, 52);
+            btnModernResimSec.Click += btnResimSec_Click;
+            pnlSag.Controls.Add(btnModernResimSec);
+
+            // Eşikleme Modu ComboBox
+            Label lblMod = new Label
+            {
+                Text = "Eşikleme Modu:",
+                Font = new Font("Segoe UI Semibold", 9.2f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                Location = new Point(18, 106),
+                AutoSize = true
+            };
+            pnlSag.Controls.Add(lblMod);
+
+            cmbMod.Parent?.Controls.Remove(cmbMod);
+            cmbMod.Visible = true;
+            cmbMod.Location = new Point(18, 128);
+            cmbMod.Size = new Size(252, 32);
+            cmbMod.Font = new Font("Segoe UI", 9.8f);
+            cmbMod.DropDownStyle = ComboBoxStyle.DropDownList;
+            if (cmbMod.Items.Count == 0)
+            {
+                cmbMod.Items.Add("Gri-Ton Eşikleme");
+                cmbMod.Items.Add("Renkli Eşikleme (RGB)");
+            }
+            cmbMod.SelectedIndex = 0;
+            cmbMod.SelectedIndexChanged -= CmbMod_SelectedIndexChanged;
+            cmbMod.SelectedIndexChanged += CmbMod_SelectedIndexChanged;
+            pnlSag.Controls.Add(cmbMod);
+
+            // Alt Eşik Sürgüsü (Min: 0..255)
+            Panel pnlMinSurgu = FormGezintiYardimcisi.KartAltSurguPaneliOlustur(
+                solEtiket: "Alt Eşik (Min): 50",
+                sagAralik: "0 .. 255",
+                min: 0,
+                max: 255,
+                deger: 50,
+                surgu: out surguMin,
+                solLabel: out lblMinDeger
+            );
+            pnlMinSurgu.Location = new Point(18, 174);
+            pnlMinSurgu.Width = 252;
+            pnlSag.Controls.Add(pnlMinSurgu);
+
+            // Üst Eşik Sürgüsü (Max: 0..255)
+            Panel pnlMaxSurgu = FormGezintiYardimcisi.KartAltSurguPaneliOlustur(
+                solEtiket: "Üst Eşik (Max): 200",
+                sagAralik: "0 .. 255",
+                min: 0,
+                max: 255,
+                deger: 200,
+                surgu: out surguMax,
+                solLabel: out lblMaxDeger
+            );
+            pnlMaxSurgu.Location = new Point(18, 236);
+            pnlMaxSurgu.Width = 252;
+            pnlSag.Controls.Add(pnlMaxSurgu);
+
+            surguMin.Scroll += (s, e) => EsikSurguDegisti(true);
+            surguMax.Scroll += (s, e) => EsikSurguDegisti(false);
+
+            // Sıfırla Butonu
+            ModernHapButon btnSifirla = FormGezintiYardimcisi.ModernButonOlustur("🔄 Varsayılan [50 - 200]", false, 252, 36);
+            btnSifirla.Location = new Point(18, 302);
+            btnSifirla.Click += (s, e) =>
+            {
+                surguMin.Value = 50;
+                surguMax.Value = 200;
+                EsikSurguDegisti(true);
+            };
+            pnlSag.Controls.Add(btnSifirla);
+
+            // Açık Mavi Bilgi Kartı
+            ModernKartPanel bilgiKarti = FormGezintiYardimcisi.AcikMaviBilgiKartiOlustur(
+                konum: new Point(18, 352),
+                boyut: new Size(252, 220),
+                icerikEtiketi: out Label lblBilgi
+            );
+            lblBilgi.Text =
+                "Aralık Eşikleme Kuralı:\n\n" +
+                "Min ≤ g(x, y) ≤ Max ise:\n" +
+                "• Piksel değeri korunur.\n" +
+                "Aralık dışındaysa:\n" +
+                "• Piksel 0 (Siyah) yapılır.\n\n" +
+                "Histogram üzerindeki kırmızı çizgiler seçili alt ve üst eşik sınırlarını gösterir.";
+            pnlSag.Controls.Add(bilgiKarti);
+
+            // 4. Orta Çalışma Alanı (3 Kart Yan Yana + Alt Analiz Şeridi)
+            Panel pnlOrta = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(12),
+                BackColor = FormGezintiYardimcisi.TemaZemin
+            };
+
+            TableLayoutPanel anaYerlesim = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2
+            };
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            anaYerlesim.RowStyles.Add(new RowStyle(SizeType.Absolute, 54f));
+
+            TableLayoutPanel kartIzgara = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1
+            };
+            kartIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
+            kartIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32f));
+            kartIzgara.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 36f));
+            kartIzgara.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+
+            rozetGiris = new ModernHapRozet();
+            rozetGiris.MetinGuncelle("Bekleniyor");
+
+            rozetCikis = new ModernHapRozet();
+            rozetCikis.MetinGuncelle("Gri-Ton");
+
+            rozetAralik = new ModernHapRozet();
+            rozetAralik.MetinGuncelle("[50 - 200]");
+
+            MevcutPictureBoxKartaTasi(kartIzgara, 0, 0, "Orijinal Görüntü", picGiris, FormGezintiYardimcisi.TemaZemin, rozetGiris);
+            MevcutPictureBoxKartaTasi(kartIzgara, 1, 0, "Eşiklenmiş Sonuç", picCikis, FormGezintiYardimcisi.TemaZemin, rozetCikis);
+            MevcutPictureBoxKartaTasi(kartIzgara, 2, 0, "Histogram Grafiği", picHistogram, Color.FromArgb(15, 23, 42), rozetAralik);
+
+            picHistogram.Resize += (s, e) => HistogramCiz();
+
+            // Alt Analiz Şeridi
+            ModernKartPanel altSerit = FormGezintiYardimcisi.AltAnalizSeridiOlustur(
+                "Aralık eşikleme ve histogram grafiğini incelemek için sağ panelden bir resim seçiniz.",
+                out lblAnaliz,
+                "Hazır"
+            );
+
+            anaYerlesim.Controls.Add(kartIzgara, 0, 0);
+            anaYerlesim.Controls.Add(altSerit, 0, 1);
+            pnlOrta.Controls.Add(anaYerlesim);
+
+            this.Controls.Add(pnlOrta);
+            FormGezintiYardimcisi.YerlesimiDuzenle(this, pnlUst, pnlSag, pnlOrta);
         }
 
-        // Resim Seçme
+        private void MevcutPictureBoxKartaTasi(
+            TableLayoutPanel tablo,
+            int sutun,
+            int satir,
+            string baslik,
+            PictureBox mevcutPb,
+            Color zeminRengi,
+            ModernHapRozet sagUstRozet = null)
+        {
+            ModernKartPanel kart = new ModernKartPanel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(6),
+                Padding = new Padding(12)
+            };
+
+            Panel pnlKartUst = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 30,
+                BackColor = Color.White
+            };
+
+            Label lbl = new Label
+            {
+                Text = baslik,
+                UseMnemonic = false,
+                AutoSize = true,
+                Location = new Point(0, 4),
+                Font = new Font("Segoe UI Semibold", 9.8f, FontStyle.Bold),
+                ForeColor = FormGezintiYardimcisi.KoyuYazi,
+                BackColor = Color.White
+            };
+            pnlKartUst.Controls.Add(lbl);
+
+            if (sagUstRozet != null)
+            {
+                sagUstRozet.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+                sagUstRozet.Location = new Point(pnlKartUst.Width - sagUstRozet.Width - 2, 2);
+                pnlKartUst.Resize += (s, e) =>
+                {
+                    sagUstRozet.Location = new Point(pnlKartUst.Width - sagUstRozet.Width - 2, 2);
+                };
+                pnlKartUst.Controls.Add(sagUstRozet);
+                sagUstRozet.BringToFront();
+            }
+
+            mevcutPb.Parent?.Controls.Remove(mevcutPb);
+            mevcutPb.Visible = true;
+            mevcutPb.Dock = DockStyle.Fill;
+            mevcutPb.SizeMode = PictureBoxSizeMode.Zoom;
+            mevcutPb.BorderStyle = BorderStyle.None;
+            mevcutPb.BackColor = zeminRengi;
+
+            kart.Controls.Add(mevcutPb);
+            kart.Controls.Add(pnlKartUst);
+            tablo.Controls.Add(kart, sutun, satir);
+        }
+
+        private void CmbMod_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            rozetCikis?.MetinGuncelle(cmbMod.SelectedIndex == 0 ? "Gri-Ton" : "RGB");
+            EsiklemeUygula();
+        }
+
+        private void EsikSurguDegisti(bool minDegisti)
+        {
+            if (surguMin.Value > surguMax.Value)
+            {
+                if (minDegisti) surguMax.Value = surguMin.Value;
+                else surguMin.Value = surguMax.Value;
+            }
+
+            lblMinDeger.Text = $"Alt Eşik (Min): {surguMin.Value}";
+            lblMaxDeger.Text = $"Üst Eşik (Max): {surguMax.Value}";
+            rozetAralik?.MetinGuncelle($"[{surguMin.Value} - {surguMax.Value}]");
+
+            HistogramCiz();
+            EsiklemeUygula();
+        }
+
         private void btnResimSec_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog ofd = new OpenFileDialog())
+            string dosyaYolu = FormGezintiYardimcisi.ResimDosyasiSec("Eşikleme ve Histogram İçin Resim Seçiniz");
+            if (string.IsNullOrEmpty(dosyaYolu)) return;
+
+            orijinalMat?.Dispose();
+            orijinalMat = Cv2.ImRead(dosyaYolu, ImreadModes.Color);
+
+            if (orijinalMat.Empty())
             {
-                ofd.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.png;*.bmp";
-                if (ofd.ShowDialog() == DialogResult.OK)
-                {
-                    orijinalMat?.Dispose();
-                    orijinalMat = Cv2.ImRead(ofd.FileName, ImreadModes.Color);
-
-                    if (orijinalMat.Empty())
-                    {
-                        MessageBox.Show("Resim yüklenemedi!");
-                        return;
-                    }
-
-                    picGiris.Image?.Dispose();
-                    picGiris.Image = BitmapConverter.ToBitmap(orijinalMat);
-
-                    HistogramHesapla();
-                    HistogramCiz();
-                    EsiklemeUygula();
-                }
-            }
-        }
-
-        // Sürgüler hareket ettikçe sınırları kontrol et ve anlık işle
-        private void TrackBar_Scroll(object sender, EventArgs e)
-        {
-            // Min, Max'ı geçemez
-            if (trackMin.Value > trackMax.Value)
-            {
-                if (sender == trackMin) trackMax.Value = trackMin.Value;
-                else trackMin.Value = trackMax.Value;
+                MessageBox.Show("Resim yüklenemedi!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
 
-            if (lblAralik != null)
-                lblAralik.Text = $"Aralık: [{trackMin.Value} - {trackMax.Value}]";
+            picGiris.Image?.Dispose();
+            picGiris.Image = BitmapConverter.ToBitmap(orijinalMat);
 
-            HistogramCiz();    // Sürgü çizgilerini histogram üzerinde güncelle
-            EsiklemeUygula();  // Görüntüyü anlık filtrele
+            rozetGiris.MetinGuncelle($"{orijinalMat.Width}×{orijinalMat.Height}");
+
+            HistogramHesapla();
+            HistogramCiz();
+            EsiklemeUygula();
         }
 
-        // 1. Histogram Verilerini Hesaplama
         private void HistogramHesapla()
         {
             if (orijinalMat == null) return;
@@ -135,21 +344,19 @@ namespace GoruntuIsleme
             }
         }
 
-        // 2. Histogram Çizimi ve Kırmızı Eşik Sınır Çizgileri
         private void HistogramCiz()
         {
             if (picHistogram == null || orijinalMat == null) return;
 
-            int w = picHistogram.Width;
-            int h = picHistogram.Height;
-            if (w <= 0 || h <= 0) return;
+            int w = picHistogram.ClientSize.Width;
+            int h = picHistogram.ClientSize.Height;
+            if (w <= 5 || h <= 5) return;
 
             Bitmap bmp = new Bitmap(w, h);
             using (Graphics g = Graphics.FromImage(bmp))
             {
-                g.Clear(Color.Black);
+                g.Clear(Color.FromArgb(15, 23, 42));
 
-                // En yüksek piksel sayısını bul (Normalizasyon için)
                 int maxSayi = 1;
                 for (int i = 0; i < 256; i++)
                 {
@@ -157,22 +364,27 @@ namespace GoruntuIsleme
                         maxSayi = histogramVerisi[i];
                 }
 
-                // Sarı renk tonlarıyla histogram çubuklarını çiz
-                using (Pen penSari = new Pen(Color.Yellow, 1))
+                // Geçirilen aralık içindeki ve dışındaki çubukları belirginleştir
+                int minT = surguMin.Value;
+                int maxT = surguMax.Value;
+
+                using (Pen penAktif = new Pen(Color.FromArgb(250, 204, 21), 1.5f))
+                using (Pen penPasif = new Pen(Color.FromArgb(100, 116, 139), 1f))
                 {
                     for (int i = 0; i < 256; i++)
                     {
                         float x = (float)i / 255f * (w - 1);
-                        float barBoyu = ((float)histogramVerisi[i] / maxSayi) * (h - 20);
-                        g.DrawLine(penSari, x, h - 1, x, h - 1 - barBoyu);
+                        float barBoyu = ((float)histogramVerisi[i] / maxSayi) * (h - 24);
+                        Pen seciliKalem = (i >= minT && i <= maxT) ? penAktif : penPasif;
+                        g.DrawLine(seciliKalem, x, h - 1, x, h - 1 - barBoyu);
                     }
                 }
 
-                // Sürgülerin eşik sınırlarını gösteren Kırmızı Dikey Çizgiler
-                using (Pen penKirmizi = new Pen(Color.Red, 2))
+                // Min ve Max eşik sınırlarını gösteren kırmızı dikey çizgiler
+                using (Pen penKirmizi = new Pen(Color.FromArgb(239, 68, 68), 2f))
                 {
-                    float xMin = (float)trackMin.Value / 255f * (w - 1);
-                    float xMax = (float)trackMax.Value / 255f * (w - 1);
+                    float xMin = (float)minT / 255f * (w - 1);
+                    float xMax = (float)maxT / 255f * (w - 1);
 
                     g.DrawLine(penKirmizi, xMin, 0, xMin, h);
                     g.DrawLine(penKirmizi, xMax, 0, xMax, h);
@@ -183,13 +395,12 @@ namespace GoruntuIsleme
             picHistogram.Image = bmp;
         }
 
-        // 3. Eşikleme İşlemi (Gri veya Renkli)
         private void EsiklemeUygula()
         {
             if (orijinalMat == null) return;
 
-            int minT = trackMin.Value;
-            int maxT = trackMax.Value;
+            int minT = surguMin.Value;
+            int maxT = surguMax.Value;
             bool griMod = (cmbMod != null && cmbMod.SelectedIndex == 0);
 
             if (griMod)
@@ -204,11 +415,7 @@ namespace GoruntuIsleme
                             for (int x = 0; x < gri.Width; x++)
                             {
                                 byte val = gri.At<byte>(y, x);
-                                // Sürgü değerleri arasındaysa değeri koru, dışındaysa siyah (0) yap
-                                if (val >= minT && val <= maxT)
-                                    sonucGri.Set<byte>(y, x, val);
-                                else
-                                    sonucGri.Set<byte>(y, x, 0);
+                                sonucGri.Set<byte>(y, x, (val >= minT && val <= maxT) ? val : (byte)0);
                             }
                         }
 
@@ -219,7 +426,6 @@ namespace GoruntuIsleme
             }
             else
             {
-                // Renkli (RGB) mod: Her kanal bağımsız incelenir
                 using (Mat sonucRenkli = new Mat(orijinalMat.Size(), MatType.CV_8UC3))
                 {
                     for (int y = 0; y < orijinalMat.Height; y++)
@@ -240,35 +446,18 @@ namespace GoruntuIsleme
                     picCikis.Image = BitmapConverter.ToBitmap(sonucRenkli);
                 }
             }
+
+            if (lblAnaliz != null)
+            {
+                string modAdi = griMod ? "Gri-Ton Eşikleme" : "Renkli (RGB) Eşikleme";
+                lblAnaliz.Text = $"Mod: {modAdi} • Geçirilen Yoğunluk Aralığı: [{minT} - {maxT}] • Boyut: {orijinalMat.Width}×{orijinalMat.Height} px";
+            }
         }
 
-        // Ödev 1'e Geri Dön Linki
-        private void lnkGeri_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        protected override void OnFormClosed(FormClosedEventArgs e)
         {
-            this.FormClosing -= Hafta2Odev2_FormClosing;
-
-            Hafta2Odev1 odev1 = new Hafta2Odev1();
-            odev1.StartPosition = FormStartPosition.Manual;
-            odev1.Location = this.Location;
-            odev1.Size = this.Size;
-            odev1.Show();
-
-            this.Close();
-        }
-
-        // Sonraki Ödeve Geçiş (Ödev 3 varsa)
-        private void lnkSonraki_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
-        {
-            this.FormClosing -= Hafta2Odev2_FormClosing;
-
-            Hafta2Odev3 odev3 = new Hafta2Odev3();
-            odev3.StartPosition = FormStartPosition.Manual;
-            odev3.Location = this.Location;
-            odev3.Size = this.Size;
-            odev3.FormBorderStyle = this.FormBorderStyle;
-
-            odev3.Show();
-            this.Close();
+            orijinalMat?.Dispose();
+            base.OnFormClosed(e);
         }
     }
 }

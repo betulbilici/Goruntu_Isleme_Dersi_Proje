@@ -50,16 +50,19 @@ namespace GoruntuIsleme
                 {
                     Form odev7 = Application.OpenForms["Hafta1Odev7"];
                     if (odev7 != null)
-                    {
                         FormGezintiYardimcisi.FormGecisYap(this, odev7);
-                    }
                     else
-                    {
                         FormGezintiYardimcisi.FormGecisYap(this, new Hafta1Odev7());
-                    }
                 },
                 sonrakiYazi: "Hafta 2 >",
-                sonrakiTikla: () => FormGezintiYardimcisi.AnaFormaDon(this)
+                sonrakiTikla: () =>
+                {
+                    Form hafta2 = Application.OpenForms["Hafta2Odev1"];
+                    if (hafta2 != null)
+                        FormGezintiYardimcisi.FormGecisYap(this, hafta2);
+                    else
+                        FormGezintiYardimcisi.FormGecisYap(this, new Hafta2Odev1());
+                }
             );
 
             // 3. Sağ Kontrol Paneli

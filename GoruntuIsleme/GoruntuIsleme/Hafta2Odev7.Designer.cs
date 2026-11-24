@@ -136,7 +136,7 @@
             lnkSonraki.TabIndex = 8;
             lnkSonraki.TabStop = true;
             lnkSonraki.Text = "Ödev 8'e Git ▶";
-            lnkSonraki.LinkClicked += lnkSonraki_LinkClicked_1;
+            
             // 
             // btnYorumYap
             // 
